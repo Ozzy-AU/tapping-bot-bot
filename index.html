@@ -1,0 +1,124 @@
+  <!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { 
+            background: black; 
+            color: white; 
+            text-align: center; 
+            padding: 20px;
+        }
+        .big-button { 
+            background: linear-gradient(45deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff) !important;
+            background-color: #ff0000 !important;
+            color: white !important;
+            width: 300px; 
+            height: 300px; 
+            font-size: 30px; 
+            border: 5px solid #ff0000 !important;
+            margin: 20px auto; 
+            display: block;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 20px #ff0000 !important;
+            filter: hue-rotate(0deg) saturate(300%) brightness(150%) contrast(200%) !important;
+            -webkit-filter: hue-rotate(0deg) saturate(300%) brightness(150%) contrast(200%) !important;
+        }
+        .big-button:hover {
+            filter: hue-rotate(90deg) saturate(400%) brightness(200%) contrast(250%) !important;
+        }
+        .big-button:active {
+            filter: hue-rotate(180deg) saturate(500%) brightness(250%) contrast(300%) !important;
+            transform: scale(0.95);
+        }
+        .bonus-button { 
+            background: linear-gradient(45deg, #ffff00, #ff8800, #ff0000, #8800ff, #0088ff, #00ff88) !important;
+            background-color: #ffff00 !important;
+            color: black !important;
+            width: 200px; 
+            height: 80px; 
+            font-size: 24px; 
+            font-weight: bold;
+            border: 3px solid #ffff00 !important;
+            margin: 20px auto; 
+            display: block;
+            border-radius: 40px;
+            cursor: pointer;
+            box-shadow: 0 0 15px #ffff00 !important;
+            filter: saturate(250%) brightness(120%) contrast(180%) !important;
+            -webkit-filter: saturate(250%) brightness(120%) contrast(180%) !important;
+        }
+        .bonus-button:hover {
+            filter: hue-rotate(45deg) saturate(300%) brightness(140%) contrast(200%) !important;
+        }
+        .bonus-button:active {
+            filter: hue-rotate(90deg) saturate(350%) brightness(160%) contrast(220%) !important;
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+    <h1 id="score">Score: 0</h1>
+    <button class="big-button" onclick="addPoint()">CLICK ME!</button>
+    <button class="bonus-button" id="bonusButton" onclick="addBonusPoint()">TAP FOR BONUS!</button>
+    
+    <script>
+        let points = 0;
+        let multiplier = 1;
+        
+        function updateMultiplier() {
+            const bonusButton = document.getElementById('bonusButton');
+            
+            if (points >= 500) {
+                multiplier = 5;
+                bonusButton.innerHTML = 'X5 BONUS!';
+            } else if (points >= 200) {
+                multiplier = 3;
+                bonusButton.innerHTML = 'X3 BONUS!';
+            } else if (points >= 50) {
+                multiplier = 2;
+                bonusButton.innerHTML = 'X2 BONUS!';
+            } else {
+                multiplier = 1;
+                bonusButton.innerHTML = 'TAP FOR BONUS!';
+            }
+        }
+        
+        function addPoint() {
+            points += multiplier;
+            document.getElementById('score').innerHTML = 'Score: ' + points;
+            updateMultiplier();
+        }
+        
+        function addBonusPoint() {
+            // Bonus button doesn't add points, just for show
+        }
+        
+        // Force color with JavaScript
+        window.onload = function() {
+            const button = document.querySelector('.big-button');
+            button.style.setProperty('background-color', '#ff0000', 'important');
+            button.style.setProperty('background', 'radial-gradient(circle, #ff0000, #cc0000)', 'important');
+            button.style.setProperty('border', '5px solid #ffff00', 'important');
+            button.style.setProperty('box-shadow', '0 0 30px #ff0000', 'important');
+            
+            // Color cycling
+            let colorIndex = 0;
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+            setInterval(() => {
+                button.style.setProperty('background-color', colors[colorIndex], 'important');
+                colorIndex = (colorIndex + 1) % colors.length;
+            }, 1000);
+            
+            // Bonus button color cycling
+            const bonusButton = document.querySelector('.bonus-button');
+            let bonusColorIndex = 0;
+            const bonusColors = ['#ffff00', '#ff8800', '#ff0000', '#8800ff', '#0088ff', '#00ff88'];
+            setInterval(() => {
+                bonusButton.style.setProperty('background-color', bonusColors[bonusColorIndex], 'important');
+                bonusColorIndex = (bonusColorIndex + 1) % bonusColors.length;
+            }, 1500);
+        };
+    </script>
+</body>
+</html>
