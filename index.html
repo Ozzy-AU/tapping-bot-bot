@@ -179,6 +179,77 @@
     <h1 id="score">Score: 0</h1>
     <button class="big-button" onclick="addPoint()">CLICK ME!</button>
     <button class="bonus-button" id="bonusButton" onclick="addBonusPoint()">TAP FOR BONUS!</button>
+    <button class="shop-button" onclick="toggleShop()">🛍️ SHOP</button>
+    
+    <!-- Shop Modal -->
+    <div class="shop-modal" id="shopModal">
+        <div class="shop-content">
+            <div class="shop-header">
+                <h2>🛍️ POWER-UP SHOP 🛍️</h2>
+                <button class="close-shop" onclick="toggleShop()">×</button>
+            </div>
+            
+            <div class="shop-items">
+                <!-- Auto-Clicker Items -->
+                <div class="shop-item">
+                    <div class="item-icon">🤖</div>
+                    <div class="item-info">
+                        <h3>Auto-Clicker v1</h3>
+                        <p>Clicks 1 time per second</p>
+                        <p class="item-price">💰 Cost: <span id="autoClicker1Cost">100</span></p>
+                    </div>
+                    <button class="buy-button" onclick="buyAutoClicker(1)">BUY</button>
+                </div>
+                
+                <div class="shop-item">
+                    <div class="item-icon">⚡</div>
+                    <div class="item-info">
+                        <h3>Auto-Clicker v2</h3>
+                        <p>Clicks 5 times per second</p>
+                        <p class="item-price">💰 Cost: <span id="autoClicker2Cost">500</span></p>
+                    </div>
+                    <button class="buy-button" onclick="buyAutoClicker(2)">BUY</button>
+                </div>
+                
+                <div class="shop-item">
+                    <div class="item-icon">🚀</div>
+                    <div class="item-info">
+                        <h3>Auto-Clicker v3</h3>
+                        <p>Clicks 10 times per second</p>
+                        <p class="item-price">💰 Cost: <span id="autoClicker3Cost">2000</span></p>
+                    </div>
+                    <button class="buy-button" onclick="buyAutoClicker(3)">BUY</button>
+                </div>
+                
+                <!-- Multiplier Items -->
+                <div class="shop-item">
+                    <div class="item-icon">📈</div>
+                    <div class="item-info">
+                        <h3>Permanent +1 Multiplier</h3>
+                        <p>Increases base multiplier by 1</p>
+                        <p class="item-price">💰 Cost: <span id="permMultCost">1000</span></p>
+                    </div>
+                    <button class="buy-button" onclick="buyPermanentMultiplier()">BUY</button>
+                </div>
+                
+                <div class="shop-item">
+                    <div class="item-icon">💥</div>
+                    <div class="item-info">
+                        <h3>2x Boost (30 sec)</h3>
+                        <p>Double all points for 30 seconds</p>
+                        <p class="item-price">💰 Cost: <span id="tempBoostCost">300</span></p>
+                    </div>
+                    <button class="buy-button" onclick="buyTempBoost()">BUY</button>
+                </div>
+            </div>
+            
+            <div class="shop-stats">
+                <p>🤖 Auto-Clickers: <span id="autoClickerCount">0</span></p>
+                <p>📈 Permanent Multiplier: +<span id="permMultiplier">0</span></p>
+                <p id="boostStatus"></p>
+            </div>
+        </div>
+    </div>
     
     <script>
         let points = 0;
