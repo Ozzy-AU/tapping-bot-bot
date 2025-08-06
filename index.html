@@ -1,4 +1,7 @@
-  <!DOCTYPE html>
+.big-button:active {
+            filter: hue-rotate(180deg) saturate(500%) brightness(250%) contrast(300%) !important;
+            transform: scale(0.95);
+        }<!DOCTYPE html>
 <html>
 <head>
     <style>
@@ -27,10 +30,6 @@
         .big-button:hover {
             filter: hue-rotate(90deg) saturate(400%) brightness(200%) contrast(250%) !important;
         }
-        .big-button:active {
-            filter: hue-rotate(180deg) saturate(500%) brightness(250%) contrast(300%) !important;
-            transform: scale(0.95);
-        }
         .bonus-button { 
             background: linear-gradient(45deg, #ffff00, #ff8800, #ff0000, #8800ff, #0088ff, #00ff88) !important;
             background-color: #ffff00 !important;
@@ -47,13 +46,132 @@
             box-shadow: 0 0 15px #ffff00 !important;
             filter: saturate(250%) brightness(120%) contrast(180%) !important;
             -webkit-filter: saturate(250%) brightness(120%) contrast(180%) !important;
+            position: relative;
+            overflow: hidden;
+            animation: pulse-glow 2s ease-in-out infinite;
         }
+        
+        /* Different colors for each multiplier level */
+        .bonus-button.x2 {
+            background: linear-gradient(45deg, #00ff00, #44ff44, #88ff88) !important;
+            border-color: #00ff00 !important;
+            box-shadow: 0 0 25px #00ff00, 0 0 50px #00ff00 !important;
+            animation: pulse-green 1.5s ease-in-out infinite;
+        }
+        
+        .bonus-button.x3 {
+            background: linear-gradient(45deg, #0099ff, #44aaff, #88bbff) !important;
+            border-color: #0099ff !important;
+            box-shadow: 0 0 30px #0099ff, 0 0 60px #0099ff !important;
+            animation: pulse-blue 1.2s ease-in-out infinite;
+        }
+        
+        .bonus-button.x5 {
+            background: linear-gradient(45deg, #ffd700, #ffed4e, #fff68f) !important;
+            border-color: #ffd700 !important;
+            box-shadow: 0 0 40px #ffd700, 0 0 80px #ffd700, 0 0 120px #ffd700 !important;
+            animation: pulse-gold 1s ease-in-out infinite;
+        }
+        
+        /* Sparkling effect overlay */
+        .bonus-button::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: sparkle 3s linear infinite;
+            pointer-events: none;
+        }
+        
+        /* Particle effect */
+        .bonus-button::after {
+            content: '✨💎⭐✨';
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 16px;
+            animation: float-particles 2s ease-in-out infinite;
+            pointer-events: none;
+        }
+        
+        .bonus-button.x5::after {
+            content: '💎⭐🌟💎✨🔥⚡';
+            font-size: 20px;
+            animation: float-particles 1s ease-in-out infinite;
+        }
+        
         .bonus-button:hover {
             filter: hue-rotate(45deg) saturate(300%) brightness(140%) contrast(200%) !important;
+            transform: scale(1.1);
         }
         .bonus-button:active {
             filter: hue-rotate(90deg) saturate(350%) brightness(160%) contrast(220%) !important;
             transform: scale(0.95);
+        }
+        
+        /* Pulse animations for different levels */
+        @keyframes pulse-glow {
+            0%, 100% { 
+                transform: scale(1);
+                filter: saturate(250%) brightness(120%) contrast(180%);
+            }
+            50% { 
+                transform: scale(1.05);
+                filter: saturate(300%) brightness(140%) contrast(200%);
+            }
+        }
+        
+        @keyframes pulse-green {
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 0 0 25px #00ff00, 0 0 50px #00ff00;
+            }
+            50% { 
+                transform: scale(1.08);
+                box-shadow: 0 0 35px #00ff00, 0 0 70px #00ff00, 0 0 105px #00ff00;
+            }
+        }
+        
+        @keyframes pulse-blue {
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 0 0 30px #0099ff, 0 0 60px #0099ff;
+            }
+            50% { 
+                transform: scale(1.1);
+                box-shadow: 0 0 40px #0099ff, 0 0 80px #0099ff, 0 0 120px #0099ff;
+            }
+        }
+        
+        @keyframes pulse-gold {
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 0 0 40px #ffd700, 0 0 80px #ffd700, 0 0 120px #ffd700;
+            }
+            50% { 
+                transform: scale(1.15);
+                box-shadow: 0 0 60px #ffd700, 0 0 120px #ffd700, 0 0 180px #ffd700, 0 0 240px #ffd700;
+            }
+        }
+        
+        @keyframes sparkle {
+            0% { transform: rotate(0deg) translateX(-200%); }
+            100% { transform: rotate(360deg) translateX(200%); }
+        }
+        
+        @keyframes float-particles {
+            0%, 100% { 
+                transform: translateX(-50%) translateY(0px);
+                opacity: 0.7;
+            }
+            50% { 
+                transform: translateX(-50%) translateY(-10px);
+                opacity: 1;
+            }
         }
     </style>
 </head>
@@ -69,15 +187,21 @@
         function updateMultiplier() {
             const bonusButton = document.getElementById('bonusButton');
             
+            // Remove all existing classes
+            bonusButton.classList.remove('x2', 'x3', 'x5');
+            
             if (points >= 500) {
                 multiplier = 5;
-                bonusButton.innerHTML = 'X5 BONUS!';
+                bonusButton.innerHTML = '💎 X5 MEGA BONUS! 💎';
+                bonusButton.classList.add('x5');
             } else if (points >= 200) {
                 multiplier = 3;
-                bonusButton.innerHTML = 'X3 BONUS!';
+                bonusButton.innerHTML = '⭐ X3 SUPER BONUS! ⭐';
+                bonusButton.classList.add('x3');
             } else if (points >= 50) {
                 multiplier = 2;
-                bonusButton.innerHTML = 'X2 BONUS!';
+                bonusButton.innerHTML = '✨ X2 BONUS! ✨';
+                bonusButton.classList.add('x2');
             } else {
                 multiplier = 1;
                 bonusButton.innerHTML = 'TAP FOR BONUS!';
@@ -92,6 +216,7 @@
         
         function addBonusPoint() {
             // Bonus button doesn't add points, just for show
+            // Maybe add a fun effect here later
         }
         
         // Force color with JavaScript
@@ -102,7 +227,7 @@
             button.style.setProperty('border', '5px solid #ffff00', 'important');
             button.style.setProperty('box-shadow', '0 0 30px #ff0000', 'important');
             
-            // Color cycling
+            // Try changing color every second to test
             let colorIndex = 0;
             const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
             setInterval(() => {
