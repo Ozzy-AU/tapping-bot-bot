@@ -366,14 +366,14 @@
     <div id="gameButtons">
         <button class="big-button" onclick="addPoint()">CLICK ME!</button>
         <button class="bonus-button" id="bonusButton" onclick="addBonusPoint()">TAP FOR BONUS!</button>
-        <button class="shop-button" onclick="openShop()">🛍️ SHOP</button>
+        <button class="shop-button" id="shopBtn">🛍️ SHOP</button>
     </div>
     
     <!-- Shop Interface (hidden by default) -->
     <div id="shopInterface" style="display: none;">
         <div class="shop-header">
             <h2>🛍️ POWER-UP SHOP 🛍️</h2>
-            <button class="back-button" onclick="closeShop()">🔙 BACK TO GAME</button>
+            <button class="back-button" id="backBtn">🔙 BACK TO GAME</button>
         </div>
         
         <div class="shop-grid">
@@ -385,7 +385,7 @@
                     <p>Clicks 1 time per second</p>
                     <p class="item-price">💰 <span id="autoClicker1Cost">100</span></p>
                 </div>
-                <button class="buy-button" onclick="buyAutoClicker(1)">BUY</button>
+                <button class="buy-button" data-buy="autoClicker1">BUY</button>
             </div>
             
             <div class="shop-item">
@@ -395,7 +395,7 @@
                     <p>Clicks 5 times per second</p>
                     <p class="item-price">💰 <span id="autoClicker2Cost">500</span></p>
                 </div>
-                <button class="buy-button" onclick="buyAutoClicker(2)">BUY</button>
+                <button class="buy-button" data-buy="autoClicker2">BUY</button>
             </div>
             
             <div class="shop-item">
@@ -405,7 +405,7 @@
                     <p>Clicks 10 times per second</p>
                     <p class="item-price">💰 <span id="autoClicker3Cost">2000</span></p>
                 </div>
-                <button class="buy-button" onclick="buyAutoClicker(3)">BUY</button>
+                <button class="buy-button" data-buy="autoClicker3">BUY</button>
             </div>
             
             <!-- Multiplier Items -->
@@ -416,7 +416,7 @@
                     <p>Increases base multiplier by 1</p>
                     <p class="item-price">💰 <span id="permMultCost">1000</span></p>
                 </div>
-                <button class="buy-button" onclick="buyPermanentMultiplier()">BUY</button>
+                <button class="buy-button" data-buy="permMult">BUY</button>
             </div>
             
             <div class="shop-item">
@@ -426,7 +426,7 @@
                     <p>Double all points for 30 seconds</p>
                     <p class="item-price">💰 <span id="tempBoostCost">300</span></p>
                 </div>
-                <button class="buy-button" onclick="buyTempBoost()">BUY</button>
+                <button class="buy-button" data-buy="tempBoost">BUY</button>
             </div>
             
             <div class="shop-item">
@@ -436,7 +436,7 @@
                     <p>Next 10 clicks give 10x points</p>
                     <p class="item-price">💰 <span id="luckyCost">800</span></p>
                 </div>
-                <button class="buy-button" onclick="buyLuckyClicks()">BUY</button>
+                <button class="buy-button" data-buy="lucky">BUY</button>
             </div>
         </div>
         
