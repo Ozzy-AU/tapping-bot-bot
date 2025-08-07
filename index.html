@@ -262,14 +262,97 @@
             display: block;
         }
         
+        /* Achievements */
+        .achievement-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: black;
+            padding: 30px;
+            border-radius: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            z-index: 3000;
+            animation: achievementPop 0.5s;
+            box-shadow: 0 0 50px rgba(255,215,0,0.8);
+        }
+        
+        @keyframes achievementPop {
+            0% { transform: translate(-50%, -50%) scale(0); }
+            50% { transform: translate(-50%, -50%) scale(1.2); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+        
+        .daily-reward-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: black;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            animation: glow 2s infinite;
+            display: none;
+        }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(255,215,0,0.5); }
+            50% { box-shadow: 0 0 30px rgba(255,215,0,0.8); }
+        }
+        
         /* Notification */
         @keyframes slideIn {
             0% { transform: translate(-50%, -100px); opacity: 0; }
             100% { transform: translate(-50%, 0); opacity: 1; }
         }
+        
+        /* Achievements Tab */
+        .achievement-item {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            opacity: 0.5;
+        }
+        
+        .achievement-item.unlocked {
+            opacity: 1;
+            border-color: #FFD700;
+            background: rgba(255,215,0,0.1);
+        }
+        
+        .achievement-icon {
+            font-size: 36px;
+            margin-right: 15px;
+        }
+        
+        .achievement-info h3 {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        
+        .achievement-info p {
+            font-size: 14px;
+            opacity: 0.7;
+        }
     </style>
 </head>
 <body>
+    <!-- Daily Reward Button -->
+    <button class="daily-reward-btn" id="dailyRewardBtn" onclick="claimDailyReward()">
+        🎁 Daily Reward
+    </button>
+    
     <div class="game-container">
         <h1 class="score-display">Score: <span id="score">0</span></h1>
         
@@ -324,6 +407,9 @@
                 <button class="close-btn" onclick="closeModal('stats')">&times;</button>
             </div>
             <div id="statsContent"></div>
+            <br>
+            <h3 style="margin-top: 20px; margin-bottom: 15px;">🏆 Achievements</h3>
+            <div id="achievementsList"></div>
         </div>
     </div>
     
@@ -343,7 +429,26 @@
                 goldenTouch: 0
             },
             activeBoost: null,
-            boostEndTime: 0
+            boostEndTime: 0,
+            // Achievement tracking
+            achievements: {
+                firstTap: false,
+                reach100: false,
+                reach1000: false,
+                reach10000: false,
+                reach100000: false,
+                tap100Times: false,
+                tap1000Times: false,
+                buyFirstUpgrade: false,
+                maxUpgrade: false,
+                luckyStreak: false
+            },
+            // Daily reward tracking
+            lastDailyReward: 0,
+            dailyStreak: 0,
+            // Statistics for achievements
+            consecutiveLuckyTaps: 0,
+            maxScore: 0
         };
         
         // Shop Items
@@ -418,6 +523,147 @@
             }
         ];
         
+        // Achievement definitions
+        const achievements = [
+            { id: 'firstTap', name: 'First Steps', description: 'Make your first tap', reward: 10, icon: '👶' },
+            { id: 'reach100', name: 'Century', description: 'Reach 100 points', reward: 50, icon: '💯' },
+            { id: 'reach1000', name: 'Thousand Club', description: 'Reach 1,000 points', reward: 200, icon: '🎯' },
+            { id: 'reach10000', name: 'Big Leagues', description: 'Reach 10,000 points', reward: 1000, icon: '🏆' },
+            { id: 'reach100000', name: 'Millionaire', description: 'Reach 100,000 points', reward: 10000, icon: '💰' },
+            { id: 'tap100Times', name: 'Persistent Tapper', description: 'Tap 100 times', reward: 100, icon: '🔨' },
+            { id: 'tap1000Times', name: 'Tap Master', description: 'Tap 1,000 times', reward: 500, icon: '⚡' },
+            { id: 'buyFirstUpgrade', name: 'Investor', description: 'Buy your first upgrade', reward: 25, icon: '📈' },
+            { id: 'maxUpgrade', name: 'Max Power', description: 'Get any upgrade to level 10', reward: 2000, icon: '💪' },
+            { id: 'luckyStreak', name: 'Lucky Devil', description: 'Get 3 lucky taps in a row', reward: 777, icon: '🍀' }
+        ];
+        
+        // Check achievements
+        function checkAchievements() {
+            // First tap
+            if (!gameState.achievements.firstTap && gameState.totalTaps >= 1) {
+                unlockAchievement('firstTap');
+            }
+            
+            // Score achievements
+            if (!gameState.achievements.reach100 && gameState.score >= 100) {
+                unlockAchievement('reach100');
+            }
+            if (!gameState.achievements.reach1000 && gameState.score >= 1000) {
+                unlockAchievement('reach1000');
+            }
+            if (!gameState.achievements.reach10000 && gameState.score >= 10000) {
+                unlockAchievement('reach10000');
+            }
+            if (!gameState.achievements.reach100000 && gameState.score >= 100000) {
+                unlockAchievement('reach100000');
+            }
+            
+            // Tap achievements
+            if (!gameState.achievements.tap100Times && gameState.totalTaps >= 100) {
+                unlockAchievement('tap100Times');
+            }
+            if (!gameState.achievements.tap1000Times && gameState.totalTaps >= 1000) {
+                unlockAchievement('tap1000Times');
+            }
+            
+            // Upgrade achievements
+            const hasUpgrade = Object.values(gameState.upgrades).some(level => level > 0);
+            if (!gameState.achievements.buyFirstUpgrade && hasUpgrade) {
+                unlockAchievement('buyFirstUpgrade');
+            }
+            
+            const hasMaxUpgrade = Object.values(gameState.upgrades).some(level => level >= 10);
+            if (!gameState.achievements.maxUpgrade && hasMaxUpgrade) {
+                unlockAchievement('maxUpgrade');
+            }
+            
+            // Lucky streak
+            if (!gameState.achievements.luckyStreak && gameState.consecutiveLuckyTaps >= 3) {
+                unlockAchievement('luckyStreak');
+            }
+            
+            // Update max score
+            if (gameState.score > gameState.maxScore) {
+                gameState.maxScore = gameState.score;
+            }
+        }
+        
+        // Unlock achievement
+        function unlockAchievement(id) {
+            const achievement = achievements.find(a => a.id === id);
+            if (achievement && !gameState.achievements[id]) {
+                gameState.achievements[id] = true;
+                gameState.score += achievement.reward;
+                
+                // Show achievement popup
+                const popup = document.createElement('div');
+                popup.className = 'achievement-popup';
+                popup.innerHTML = `
+                    <div style="font-size: 48px; margin-bottom: 10px;">${achievement.icon}</div>
+                    <div style="font-size: 28px; margin-bottom: 10px;">ACHIEVEMENT UNLOCKED!</div>
+                    <div style="font-size: 24px; margin-bottom: 10px;">${achievement.name}</div>
+                    <div style="font-size: 18px; opacity: 0.8; margin-bottom: 10px;">${achievement.description}</div>
+                    <div style="font-size: 20px; color: green;">+${achievement.reward} points!</div>
+                `;
+                document.body.appendChild(popup);
+                setTimeout(() => popup.remove(), 3000);
+                
+                updateDisplay();
+                saveGame();
+            }
+        }
+        
+        // Daily Reward System
+        function checkDailyReward() {
+            const now = Date.now();
+            const oneDayMs = 24 * 60 * 60 * 1000;
+            const timeSinceLastReward = now - gameState.lastDailyReward;
+            
+            if (timeSinceLastReward >= oneDayMs || gameState.lastDailyReward === 0) {
+                document.getElementById('dailyRewardBtn').style.display = 'block';
+                
+                // Check if streak should reset (more than 48 hours)
+                if (timeSinceLastReward > oneDayMs * 2 && gameState.lastDailyReward !== 0) {
+                    gameState.dailyStreak = 0;
+                }
+            } else {
+                document.getElementById('dailyRewardBtn').style.display = 'none';
+            }
+        }
+        
+        function claimDailyReward() {
+            const now = Date.now();
+            const oneDayMs = 24 * 60 * 60 * 1000;
+            
+            if (now - gameState.lastDailyReward >= oneDayMs || gameState.lastDailyReward === 0) {
+                gameState.dailyStreak++;
+                gameState.lastDailyReward = now;
+                
+                // Calculate reward based on streak
+                const baseReward = 100;
+                const streakBonus = gameState.dailyStreak * 50;
+                const totalReward = baseReward + streakBonus;
+                
+                gameState.score += totalReward;
+                
+                // Show reward popup
+                const popup = document.createElement('div');
+                popup.className = 'achievement-popup';
+                popup.innerHTML = `
+                    <div style="font-size: 48px; margin-bottom: 10px;">🎁</div>
+                    <div style="font-size: 28px; margin-bottom: 10px;">DAILY REWARD!</div>
+                    <div style="font-size: 20px; margin-bottom: 10px;">Day ${gameState.dailyStreak} Streak!</div>
+                    <div style="font-size: 24px; color: green;">+${totalReward} points!</div>
+                `;
+                document.body.appendChild(popup);
+                setTimeout(() => popup.remove(), 3000);
+                
+                document.getElementById('dailyRewardBtn').style.display = 'none';
+                updateDisplay();
+                saveGame();
+            }
+        }
+        
         // Initialize
         function init() {
             loadGame();
@@ -426,6 +672,8 @@
             updateDisplay();
             startAutoTapper();
             checkBoostTimer();
+            checkDailyReward();
+            checkAchievements();
         }
         
         // Main tap function
@@ -445,6 +693,9 @@
                 if (Math.random() < luckChance) {
                     basePoints *= 10;
                     isLucky = true;
+                    gameState.consecutiveLuckyTaps++;
+                } else {
+                    gameState.consecutiveLuckyTaps = 0;
                 }
             }
             
@@ -467,17 +718,16 @@
             
             // Special particle for lucky taps
             if (isLucky) {
-                createParticle(points, '#FFD700'); // Gold color
+                createParticle(points, '#FFD700');
                 showNotification('LUCKY TAP! 10X POINTS!');
             } else {
-                createParticle(points, '#00ff41'); // Normal green
+                createParticle(points, '#00ff41');
             }
             
             updateDisplay();
             saveGame();
-            
-            // Check multiplier milestones
             checkMilestones();
+            checkAchievements();
         }
         
         // Check multiplier milestones
@@ -505,7 +755,6 @@
             particle.className = 'particle';
             particle.textContent = '+' + points;
             
-            // Random position around button
             const angle = Math.random() * Math.PI * 2;
             const distance = 50 + Math.random() * 50;
             const x = 50 + Math.cos(angle) * distance;
@@ -550,7 +799,6 @@
             }
             document.getElementById('multiplierValue').textContent = displayMultiplier.toFixed(1);
             
-            // Update shop affordability
             if (document.getElementById('shopModal').classList.contains('active')) {
                 renderShop();
             }
@@ -561,6 +809,7 @@
             document.getElementById(type + 'Modal').classList.add('active');
             if (type === 'stats') {
                 updateStats();
+                renderAchievements();
             }
         }
         
@@ -582,190 +831,3 @@
                             <p>${item.description}</p>
                             <p style="color: ${canAfford ? '#00ff41' : '#ff4444'}">Cost: ${cost.toLocaleString()} points</p>
                         </div>
-                        <button class="buy-btn" onclick="buyUpgrade('${item.id}')" 
-                                ${!canAfford ? 'disabled' : ''}>
-                            BUY
-                        </button>
-                    </div>
-                `;
-            }).join('');
-        }
-        
-        function buyUpgrade(id) {
-            const item = shopItems.find(i => i.id === id);
-            const level = gameState.upgrades[id] || 0;
-            const cost = Math.floor(item.baseCost * Math.pow(1.5, level));
-            
-            if (gameState.score >= cost) {
-                gameState.score -= cost;
-                gameState.upgrades[id]++;
-                
-                updateDisplay();
-                renderShop();
-                saveGame();
-                showNotification(`${item.name} upgraded to level ${gameState.upgrades[id]}!`);
-            }
-        }
-        
-        // Boosts functions
-        function renderBoosts() {
-            const container = document.getElementById('boostItems');
-            container.innerHTML = boostItems.map(boost => {
-                const canAfford = gameState.score >= boost.cost;
-                const isActive = gameState.activeBoost && gameState.activeBoost.id === boost.id;
-                return `
-                    <div class="shop-item">
-                        <div class="shop-item-info">
-                            <h3>${boost.icon} ${boost.name} (${boost.duration}s)</h3>
-                            <p>${boost.multiplier}X multiplier</p>
-                            <p style="color: ${canAfford ? '#00ff41' : '#ff4444'}">Cost: ${boost.cost.toLocaleString()} points</p>
-                        </div>
-                        <button class="buy-btn" 
-                                onclick="activateBoost('${boost.id}')" 
-                                ${!canAfford || isActive ? 'disabled' : ''}>
-                            ${isActive ? 'ACTIVE' : 'ACTIVATE'}
-                        </button>
-                    </div>
-                `;
-            }).join('');
-        }
-        
-        function activateBoost(id) {
-            const boost = boostItems.find(b => b.id === id);
-            if (gameState.score >= boost.cost) {
-                gameState.score -= boost.cost;
-                gameState.activeBoost = boost;
-                gameState.boostEndTime = Date.now() + (boost.duration * 1000);
-                
-                updateDisplay();
-                renderBoosts();
-                saveGame();
-                showNotification(`${boost.name} activated!`);
-                
-                // Show boost timer
-                document.getElementById('boostTimer').classList.add('active');
-                document.getElementById('boostText').textContent = boost.name.toUpperCase();
-            }
-        }
-        
-        // Check boost timer
-        function checkBoostTimer() {
-            setInterval(() => {
-                if (gameState.activeBoost && Date.now() < gameState.boostEndTime) {
-                    const timeLeft = Math.ceil((gameState.boostEndTime - Date.now()) / 1000);
-                    document.getElementById('boostTime').textContent = timeLeft;
-                } else if (gameState.activeBoost) {
-                    gameState.activeBoost = null;
-                    document.getElementById('boostTimer').classList.remove('active');
-                    renderBoosts();
-                    showNotification('Boost expired!');
-                }
-            }, 100);
-        }
-        
-        // Stats functions
-        function updateStats() {
-            const playTime = Math.floor((Date.now() - gameState.startTime) / 1000);
-            const minutes = Math.floor(playTime / 60);
-            const seconds = playTime % 60;
-            
-            const container = document.getElementById('statsContent');
-            container.innerHTML = `
-                <div class="stat-item">
-                    <span class="stat-label">Total Taps</span>
-                    <span class="stat-value">${gameState.totalTaps.toLocaleString()}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Total Earned</span>
-                    <span class="stat-value">${gameState.totalEarned.toLocaleString()}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Current Score</span>
-                    <span class="stat-value">${Math.floor(gameState.score).toLocaleString()}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Play Time</span>
-                    <span class="stat-value">${minutes}m ${seconds}s</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Taps Per Second</span>
-                    <span class="stat-value">${playTime > 0 ? (gameState.totalTaps / playTime).toFixed(2) : '0'}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Points Per Tap</span>
-                    <span class="stat-value">${gameState.totalTaps > 0 ? Math.floor(gameState.totalEarned / gameState.totalTaps) : '0'}</span>
-                </div>
-            `;
-        }
-        
-        // Auto Tapper
-        function startAutoTapper() {
-            setInterval(() => {
-                if (gameState.upgrades.autoTapper > 0) {
-                    let autoPoints = gameState.upgrades.autoTapper;
-                    
-                    // Apply multipliers
-                    let totalMultiplier = gameState.multiplier;
-                    if (gameState.upgrades.multiplierBoost > 0) {
-                        totalMultiplier += gameState.upgrades.multiplierBoost * 0.5;
-                    }
-                    
-                    // Apply active boost
-                    if (gameState.activeBoost && Date.now() < gameState.boostEndTime) {
-                        totalMultiplier *= gameState.activeBoost.multiplier;
-                    }
-                    
-                    const points = Math.floor(autoPoints * totalMultiplier);
-                    gameState.score += points;
-                    gameState.totalEarned += points;
-                    
-                    updateDisplay();
-                    checkMilestones();
-                }
-            }, 1000);
-        }
-        
-        // Save/Load functions
-        function saveGame() {
-            try {
-                localStorage.setItem('glitchedMintGame', JSON.stringify(gameState));
-            } catch (e) {
-                console.log('Could not save game');
-            }
-        }
-        
-        function loadGame() {
-            try {
-                const saved = localStorage.getItem('glitchedMintGame');
-                if (saved) {
-                    const loadedState = JSON.parse(saved);
-                    // Merge with default state to handle new properties
-                    gameState = { ...gameState, ...loadedState };
-                    // Ensure all upgrade properties exist
-                    gameState.upgrades = { 
-                        tapPower: 0,
-                        autoTapper: 0,
-                        multiplierBoost: 0,
-                        luckyTap: 0,
-                        goldenTouch: 0,
-                        ...gameState.upgrades 
-                    };
-                }
-            } catch (e) {
-                console.log('Could not load game');
-            }
-        }
-        
-        // Reset game function
-        function resetGame() {
-            if (confirm('Are you sure you want to reset all progress? This cannot be undone!')) {
-                localStorage.removeItem('glitchedMintGame');
-                location.reload();
-            }
-        }
-        
-        // Start the game
-        init();
-    </script>
-</body>
-</html>
