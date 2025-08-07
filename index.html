@@ -95,7 +95,6 @@
             padding: 20px;
             background: rgba(20,20,20,0.95);
             border-top: 1px solid rgba(255,255,255,0.1);
-            backdrop-filter: blur(10px);
         }
         
         .nav-button {
@@ -184,4 +183,424 @@
             margin-bottom: 15px;
             display: flex;
             justify-content: space-between;
-            align-items:
+            align-items: center;
+        }
+        
+        .shop-item-info h3 {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+        
+        .shop-item-info p {
+            font-size: 14px;
+            opacity: 0.7;
+        }
+        
+        .buy-btn {
+            background: #00ff41;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            color: black;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .buy-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        
+        /* Particle Effects */
+        .particle {
+            position: fixed;
+            pointer-events: none;
+            font-size: 24px;
+            font-weight: bold;
+            animation: float 1s ease-out forwards;
+            z-index: 999;
+        }
+        
+        @keyframes float {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-100px) scale(1.5);
+            }
+        }
+        
+        /* Stats Display */
+        .stat-item {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .stat-label {
+            opacity: 0.7;
+        }
+        
+        .stat-value {
+            font-weight: bold;
+            color: #00ff41;
+        }
+        
+        /* Notification */
+        @keyframes slideIn {
+            0% { transform: translate(-50%, -100px); opacity: 0; }
+            100% { transform: translate(-50%, 0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="score-display">Score: <span id="score">0</span></h1>
+        
+        <button class="tap-button" id="tapButton">
+            CLICK ME!
+        </button>
+        
+        <div class="multiplier-badge" id="multiplierBadge">
+            X<span id="multiplierValue">1</span>
+        </div>
+    </div>
+    
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <button class="nav-button shop" id="shopBtn">SHOP</button>
+        <button class="nav-button boosts" id="boostsBtn">BOOSTS</button>
+        <button class="nav-button stats" id="statsBtn">STATS</button>
+    </div>
+    
+    <!-- Shop Modal -->
+    <div class="modal" id="shopModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">SHOP</h2>
+                <button class="close-btn" id="closeShop">&times;</button>
+            </div>
+            <div id="shopItems"></div>
+        </div>
+    </div>
+    
+    <!-- Boosts Modal -->
+    <div class="modal" id="boostsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">BOOSTS</h2>
+                <button class="close-btn" id="closeBoosts">&times;</button>
+            </div>
+            <div id="boostItems"></div>
+        </div>
+    </div>
+    
+    <!-- Stats Modal -->
+    <div class="modal" id="statsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">STATS</h2>
+                <button class="close-btn" id="closeStats">&times;</button>
+            </div>
+            <div id="statsContent"></div>
+        </div>
+    </div>
+    
+    <script>
+        // Game State - stored in memory only (no localStorage in Telegram)
+        let gameState = {
+            score: 0,
+            multiplier: 1,
+            totalTaps: 0,
+            totalEarned: 0,
+            startTime: Date.now(),
+            upgrades: {
+                tapPower: 0,
+                autoTapper: 0,
+                multiplierBoost: 0
+            }
+        };
+        
+        // Shop Items
+        const shopItems = [
+            {
+                id: 'tapPower',
+                name: 'Tap Power',
+                description: 'Increase points per tap',
+                baseCost: 50,
+                effect: 1,
+                icon: '👆'
+            },
+            {
+                id: 'multiplierBoost',
+                name: 'Multiplier Boost',
+                description: 'Increase base multiplier',
+                baseCost: 200,
+                effect: 0.5,
+                icon: '✨'
+            },
+            {
+                id: 'autoTapper',
+                name: 'Auto Tapper',
+                description: 'Auto tap every second',
+                baseCost: 500,
+                effect: 1,
+                icon: '🤖'
+            }
+        ];
+        
+        // Initialize game
+        window.addEventListener('DOMContentLoaded', function() {
+            // Main tap button
+            document.getElementById('tapButton').addEventListener('click', tap);
+            document.getElementById('tapButton').addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                tap();
+            });
+            
+            // Navigation buttons
+            document.getElementById('shopBtn').addEventListener('click', function() {
+                openModal('shop');
+            });
+            document.getElementById('boostsBtn').addEventListener('click', function() {
+                openModal('boosts');
+            });
+            document.getElementById('statsBtn').addEventListener('click', function() {
+                openModal('stats');
+            });
+            
+            // Close buttons
+            document.getElementById('closeShop').addEventListener('click', function() {
+                closeModal('shop');
+            });
+            document.getElementById('closeBoosts').addEventListener('click', function() {
+                closeModal('boosts');
+            });
+            document.getElementById('closeStats').addEventListener('click', function() {
+                closeModal('stats');
+            });
+            
+            // Initialize displays
+            updateDisplay();
+            renderShop();
+            renderBoosts();
+            startAutoTapper();
+        });
+        
+        // Main tap function
+        function tap() {
+            let basePoints = 1 + gameState.upgrades.tapPower;
+            let totalMultiplier = gameState.multiplier;
+            
+            if (gameState.upgrades.multiplierBoost > 0) {
+                totalMultiplier += gameState.upgrades.multiplierBoost * 0.5;
+            }
+            
+            const points = Math.floor(basePoints * totalMultiplier);
+            
+            gameState.score += points;
+            gameState.totalTaps++;
+            gameState.totalEarned += points;
+            
+            createParticle(points);
+            updateDisplay();
+            checkMilestones();
+        }
+        
+        // Check multiplier milestones
+        function checkMilestones() {
+            if (gameState.score >= 500 && gameState.multiplier < 5) {
+                gameState.multiplier = 5;
+                showNotification('X5 MULTIPLIER UNLOCKED!');
+            } else if (gameState.score >= 200 && gameState.multiplier < 3) {
+                gameState.multiplier = 3;
+                showNotification('X3 MULTIPLIER UNLOCKED!');
+            } else if (gameState.score >= 50 && gameState.multiplier < 2) {
+                gameState.multiplier = 2;
+                showNotification('X2 MULTIPLIER UNLOCKED!');
+            }
+        }
+        
+        // Create floating particle effect
+        function createParticle(points) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.textContent = '+' + points;
+            particle.style.left = '50%';
+            particle.style.top = '50%';
+            particle.style.color = '#00ff41';
+            document.body.appendChild(particle);
+            setTimeout(function() { 
+                particle.remove(); 
+            }, 1000);
+        }
+        
+        // Show notification
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20%;
+                left: 50%;
+                transform: translateX(-50%);
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                padding: 20px 40px;
+                border-radius: 20px;
+                font-size: 24px;
+                font-weight: bold;
+                z-index: 2000;
+                animation: slideIn 0.5s;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(function() { 
+                notification.remove(); 
+            }, 2000);
+        }
+        
+        // Update display
+        function updateDisplay() {
+            document.getElementById('score').textContent = Math.floor(gameState.score);
+            
+            let displayMultiplier = gameState.multiplier;
+            if (gameState.upgrades.multiplierBoost > 0) {
+                displayMultiplier += gameState.upgrades.multiplierBoost * 0.5;
+            }
+            document.getElementById('multiplierValue').textContent = displayMultiplier.toFixed(1);
+        }
+        
+        // Modal functions
+        function openModal(type) {
+            document.getElementById(type + 'Modal').classList.add('active');
+            if (type === 'stats') {
+                updateStats();
+            }
+            if (type === 'shop') {
+                renderShop();
+            }
+        }
+        
+        function closeModal(type) {
+            document.getElementById(type + 'Modal').classList.remove('active');
+        }
+        
+        // Shop functions
+        function renderShop() {
+            const container = document.getElementById('shopItems');
+            let html = '';
+            
+            shopItems.forEach(function(item) {
+                const level = gameState.upgrades[item.id] || 0;
+                const cost = Math.floor(item.baseCost * Math.pow(1.5, level));
+                const canAfford = gameState.score >= cost;
+                
+                html += `
+                    <div class="shop-item">
+                        <div class="shop-item-info">
+                            <h3>${item.icon} ${item.name} (Lvl ${level})</h3>
+                            <p>${item.description}</p>
+                            <p style="color: ${canAfford ? '#00ff41' : '#ff4444'}">Cost: ${cost} points</p>
+                        </div>
+                        <button class="buy-btn" id="buy-${item.id}" ${!canAfford ? 'disabled' : ''}>
+                            BUY
+                        </button>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+            
+            // Add event listeners to buy buttons
+            shopItems.forEach(function(item) {
+                const buyBtn = document.getElementById('buy-' + item.id);
+                if (buyBtn) {
+                    buyBtn.addEventListener('click', function() {
+                        buyUpgrade(item.id);
+                    });
+                }
+            });
+        }
+        
+        function buyUpgrade(id) {
+            const item = shopItems.find(function(i) { return i.id === id; });
+            const level = gameState.upgrades[id] || 0;
+            const cost = Math.floor(item.baseCost * Math.pow(1.5, level));
+            
+            if (gameState.score >= cost) {
+                gameState.score -= cost;
+                gameState.upgrades[id]++;
+                
+                updateDisplay();
+                renderShop();
+                showNotification(item.name + ' upgraded!');
+            }
+        }
+        
+        // Boosts functions
+        function renderBoosts() {
+            const container = document.getElementById('boostItems');
+            container.innerHTML = `
+                <div class="shop-item">
+                    <div class="shop-item-info">
+                        <h3>⚡ Coming Soon!</h3>
+                        <p>Temporary boosts will be added in the next update</p>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Stats functions
+        function updateStats() {
+            const playTime = Math.floor((Date.now() - gameState.startTime) / 1000);
+            const minutes = Math.floor(playTime / 60);
+            const seconds = playTime % 60;
+            
+            const container = document.getElementById('statsContent');
+            container.innerHTML = `
+                <div class="stat-item">
+                    <span class="stat-label">Total Taps</span>
+                    <span class="stat-value">${gameState.totalTaps}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Total Earned</span>
+                    <span class="stat-value">${gameState.totalEarned}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Play Time</span>
+                    <span class="stat-value">${minutes}m ${seconds}s</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Taps Per Second</span>
+                    <span class="stat-value">${playTime > 0 ? (gameState.totalTaps / playTime).toFixed(2) : '0'}</span>
+                </div>
+            `;
+        }
+        
+        // Auto Tapper
+        function startAutoTapper() {
+            setInterval(function() {
+                if (gameState.upgrades.autoTapper > 0) {
+                    let autoPoints = gameState.upgrades.autoTapper;
+                    let totalMultiplier = gameState.multiplier;
+                    
+                    if (gameState.upgrades.multiplierBoost > 0) {
+                        totalMultiplier += gameState.upgrades.multiplierBoost * 0.5;
+                    }
+                    
+                    const points = Math.floor(autoPoints * totalMultiplier);
+                    gameState.score += points;
+                    gameState.totalEarned += points;
+                    
+                    updateDisplay();
+                    checkMilestones();
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
