@@ -210,7 +210,6 @@
             pointer-events: none;
             font-size: 24px;
             font-weight: bold;
-            color: #00ff41;
             animation: float 1s ease-out forwards;
             z-index: 999;
         }
@@ -244,6 +243,30 @@
             font-weight: bold;
             color: #00ff41;
         }
+        
+        /* Boost Timer */
+        .boost-timer {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,255,65,0.2);
+            border: 2px solid #00ff41;
+            border-radius: 10px;
+            padding: 10px 20px;
+            font-size: 18px;
+            font-weight: bold;
+            display: none;
+        }
+        
+        .boost-timer.active {
+            display: block;
+        }
+        
+        /* Notification */
+        @keyframes slideIn {
+            0% { transform: translate(-50%, -100px); opacity: 0; }
+            100% { transform: translate(-50%, 0); opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -257,6 +280,11 @@
         <div class="multiplier-badge" id="multiplierBadge">
             X<span id="multiplierValue">1</span>
         </div>
+    </div>
+    
+    <!-- Boost Timer -->
+    <div class="boost-timer" id="boostTimer">
+        <span id="boostText">2X BOOST</span>: <span id="boostTime">30</span>s
     </div>
     
     <!-- Bottom Navigation -->
@@ -310,8 +338,12 @@
             upgrades: {
                 tapPower: 0,
                 autoTapper: 0,
-                multiplierBoost: 0
-            }
+                multiplierBoost: 0,
+                luckyTap: 0,
+                goldenTouch: 0
+            },
+            activeBoost: null,
+            boostEndTime: 0
         };
         
         // Shop Items
@@ -321,21 +353,68 @@
                 name: 'Tap Power',
                 description: 'Increase points per tap',
                 baseCost: 50,
-                effect: 1
+                effect: 1,
+                icon: '👆'
             },
             {
                 id: 'multiplierBoost',
                 name: 'Multiplier Boost',
                 description: 'Increase base multiplier',
                 baseCost: 200,
-                effect: 0.5
+                effect: 0.5,
+                icon: '✨'
             },
             {
                 id: 'autoTapper',
                 name: 'Auto Tapper',
                 description: 'Automatically tap every second',
                 baseCost: 500,
-                effect: 1
+                effect: 1,
+                icon: '🤖'
+            },
+            {
+                id: 'luckyTap',
+                name: 'Lucky Tap',
+                description: '10% chance for 10x points',
+                baseCost: 1000,
+                effect: 0.1,
+                icon: '🍀'
+            },
+            {
+                id: 'goldenTouch',
+                name: 'Golden Touch',
+                description: 'All taps worth more',
+                baseCost: 5000,
+                effect: 5,
+                icon: '👑'
+            }
+        ];
+        
+        // Boost Items
+        const boostItems = [
+            {
+                id: 'double',
+                name: '2X Boost',
+                duration: 30,
+                cost: 100,
+                multiplier: 2,
+                icon: '⚡'
+            },
+            {
+                id: 'mega',
+                name: 'Mega Tap',
+                duration: 60,
+                cost: 500,
+                multiplier: 10,
+                icon: '💥'
+            },
+            {
+                id: 'ultra',
+                name: 'Ultra Mode',
+                duration: 20,
+                cost: 1000,
+                multiplier: 50,
+                icon: '🔥'
             }
         ];
         
@@ -346,42 +425,96 @@
             renderBoosts();
             updateDisplay();
             startAutoTapper();
+            checkBoostTimer();
         }
         
         // Main tap function
         function tap() {
             const button = document.getElementById('tapButton');
-            const basePoints = 1 + gameState.upgrades.tapPower;
-            const points = basePoints * gameState.multiplier;
+            let basePoints = 1 + gameState.upgrades.tapPower;
+            
+            // Golden Touch bonus
+            if (gameState.upgrades.goldenTouch > 0) {
+                basePoints += gameState.upgrades.goldenTouch * 5;
+            }
+            
+            // Lucky Tap chance
+            let isLucky = false;
+            if (gameState.upgrades.luckyTap > 0) {
+                const luckChance = gameState.upgrades.luckyTap * 0.1;
+                if (Math.random() < luckChance) {
+                    basePoints *= 10;
+                    isLucky = true;
+                }
+            }
+            
+            // Apply multipliers
+            let totalMultiplier = gameState.multiplier;
+            if (gameState.upgrades.multiplierBoost > 0) {
+                totalMultiplier += gameState.upgrades.multiplierBoost * 0.5;
+            }
+            
+            // Apply active boost
+            if (gameState.activeBoost && Date.now() < gameState.boostEndTime) {
+                totalMultiplier *= gameState.activeBoost.multiplier;
+            }
+            
+            const points = Math.floor(basePoints * totalMultiplier);
             
             gameState.score += points;
             gameState.totalTaps++;
             gameState.totalEarned += points;
             
-            createParticle(points);
+            // Special particle for lucky taps
+            if (isLucky) {
+                createParticle(points, '#FFD700'); // Gold color
+                showNotification('LUCKY TAP! 10X POINTS!');
+            } else {
+                createParticle(points, '#00ff41'); // Normal green
+            }
+            
             updateDisplay();
             saveGame();
             
             // Check multiplier milestones
-            if (gameState.score >= 500 && gameState.multiplier < 5) {
-                gameState.multiplier = 5;
-                showNotification('X5 MULTIPLIER UNLOCKED!');
-            } else if (gameState.score >= 200 && gameState.multiplier < 3) {
-                gameState.multiplier = 3;
-                showNotification('X3 MULTIPLIER UNLOCKED!');
-            } else if (gameState.score >= 50 && gameState.multiplier < 2) {
-                gameState.multiplier = 2;
-                showNotification('X2 MULTIPLIER UNLOCKED!');
+            checkMilestones();
+        }
+        
+        // Check multiplier milestones
+        function checkMilestones() {
+            const milestones = [
+                { score: 50, multiplier: 2, message: 'X2 MULTIPLIER UNLOCKED!' },
+                { score: 200, multiplier: 3, message: 'X3 MULTIPLIER UNLOCKED!' },
+                { score: 500, multiplier: 5, message: 'X5 MULTIPLIER UNLOCKED!' },
+                { score: 2000, multiplier: 10, message: 'X10 MULTIPLIER UNLOCKED!' },
+                { score: 10000, multiplier: 20, message: 'X20 MULTIPLIER UNLOCKED!' }
+            ];
+            
+            for (let milestone of milestones) {
+                if (gameState.score >= milestone.score && gameState.multiplier < milestone.multiplier) {
+                    gameState.multiplier = milestone.multiplier;
+                    showNotification(milestone.message);
+                    break;
+                }
             }
         }
         
         // Create floating particle effect
-        function createParticle(points) {
+        function createParticle(points, color = '#00ff41') {
             const particle = document.createElement('div');
             particle.className = 'particle';
             particle.textContent = '+' + points;
-            particle.style.left = '50%';
-            particle.style.top = '50%';
+            
+            // Random position around button
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 50 + Math.random() * 50;
+            const x = 50 + Math.cos(angle) * distance;
+            const y = 50 + Math.sin(angle) * distance;
+            
+            particle.style.left = x + '%';
+            particle.style.top = y + '%';
+            particle.style.color = color;
+            
             document.body.appendChild(particle);
             setTimeout(() => particle.remove(), 1000);
         }
@@ -409,8 +542,18 @@
         
         // Update display
         function updateDisplay() {
-            document.getElementById('score').textContent = Math.floor(gameState.score);
-            document.getElementById('multiplierValue').textContent = gameState.multiplier;
+            document.getElementById('score').textContent = Math.floor(gameState.score).toLocaleString();
+            
+            let displayMultiplier = gameState.multiplier;
+            if (gameState.upgrades.multiplierBoost > 0) {
+                displayMultiplier += gameState.upgrades.multiplierBoost * 0.5;
+            }
+            document.getElementById('multiplierValue').textContent = displayMultiplier.toFixed(1);
+            
+            // Update shop affordability
+            if (document.getElementById('shopModal').classList.contains('active')) {
+                renderShop();
+            }
         }
         
         // Modal functions
@@ -429,17 +572,18 @@
         function renderShop() {
             const container = document.getElementById('shopItems');
             container.innerHTML = shopItems.map(item => {
-                const level = gameState.upgrades[item.id];
+                const level = gameState.upgrades[item.id] || 0;
                 const cost = Math.floor(item.baseCost * Math.pow(1.5, level));
+                const canAfford = gameState.score >= cost;
                 return `
                     <div class="shop-item">
                         <div class="shop-item-info">
-                            <h3>${item.name} (Lvl ${level})</h3>
+                            <h3>${item.icon} ${item.name} (Lvl ${level})</h3>
                             <p>${item.description}</p>
-                            <p>Cost: ${cost} points</p>
+                            <p style="color: ${canAfford ? '#00ff41' : '#ff4444'}">Cost: ${cost.toLocaleString()} points</p>
                         </div>
                         <button class="buy-btn" onclick="buyUpgrade('${item.id}')" 
-                                ${gameState.score < cost ? 'disabled' : ''}>
+                                ${!canAfford ? 'disabled' : ''}>
                             BUY
                         </button>
                     </div>
@@ -449,76 +593,107 @@
         
         function buyUpgrade(id) {
             const item = shopItems.find(i => i.id === id);
-            const level = gameState.upgrades[id];
+            const level = gameState.upgrades[id] || 0;
             const cost = Math.floor(item.baseCost * Math.pow(1.5, level));
             
             if (gameState.score >= cost) {
                 gameState.score -= cost;
                 gameState.upgrades[id]++;
                 
-                if (id === 'multiplierBoost') {
-                    gameState.multiplier += item.effect;
-                }
-                
                 updateDisplay();
                 renderShop();
                 saveGame();
-                showNotification(`${item.name} upgraded!`);
+                showNotification(`${item.name} upgraded to level ${gameState.upgrades[id]}!`);
             }
         }
         
         // Boosts functions
         function renderBoosts() {
             const container = document.getElementById('boostItems');
-            container.innerHTML = `
-                <div class="shop-item">
-                    <div class="shop-item-info">
-                        <h3>2X Boost (30s)</h3>
-                        <p>Double your earnings</p>
-                        <p>Cost: 100 points</p>
+            container.innerHTML = boostItems.map(boost => {
+                const canAfford = gameState.score >= boost.cost;
+                const isActive = gameState.activeBoost && gameState.activeBoost.id === boost.id;
+                return `
+                    <div class="shop-item">
+                        <div class="shop-item-info">
+                            <h3>${boost.icon} ${boost.name} (${boost.duration}s)</h3>
+                            <p>${boost.multiplier}X multiplier</p>
+                            <p style="color: ${canAfford ? '#00ff41' : '#ff4444'}">Cost: ${boost.cost.toLocaleString()} points</p>
+                        </div>
+                        <button class="buy-btn" 
+                                onclick="activateBoost('${boost.id}')" 
+                                ${!canAfford || isActive ? 'disabled' : ''}>
+                            ${isActive ? 'ACTIVE' : 'ACTIVATE'}
+                        </button>
                     </div>
-                    <button class="buy-btn" onclick="activateBoost('double')">
-                        ACTIVATE
-                    </button>
-                </div>
-                <div class="shop-item">
-                    <div class="shop-item-info">
-                        <h3>Mega Tap (60s)</h3>
-                        <p>10X tap power</p>
-                        <p>Cost: 500 points</p>
-                    </div>
-                    <button class="buy-btn" onclick="activateBoost('mega')">
-                        ACTIVATE
-                    </button>
-                </div>
-            `;
+                `;
+            }).join('');
         }
         
-        function activateBoost(type) {
-            // Boost logic here
-            showNotification('Boost activated!');
+        function activateBoost(id) {
+            const boost = boostItems.find(b => b.id === id);
+            if (gameState.score >= boost.cost) {
+                gameState.score -= boost.cost;
+                gameState.activeBoost = boost;
+                gameState.boostEndTime = Date.now() + (boost.duration * 1000);
+                
+                updateDisplay();
+                renderBoosts();
+                saveGame();
+                showNotification(`${boost.name} activated!`);
+                
+                // Show boost timer
+                document.getElementById('boostTimer').classList.add('active');
+                document.getElementById('boostText').textContent = boost.name.toUpperCase();
+            }
+        }
+        
+        // Check boost timer
+        function checkBoostTimer() {
+            setInterval(() => {
+                if (gameState.activeBoost && Date.now() < gameState.boostEndTime) {
+                    const timeLeft = Math.ceil((gameState.boostEndTime - Date.now()) / 1000);
+                    document.getElementById('boostTime').textContent = timeLeft;
+                } else if (gameState.activeBoost) {
+                    gameState.activeBoost = null;
+                    document.getElementById('boostTimer').classList.remove('active');
+                    renderBoosts();
+                    showNotification('Boost expired!');
+                }
+            }, 100);
         }
         
         // Stats functions
         function updateStats() {
             const playTime = Math.floor((Date.now() - gameState.startTime) / 1000);
+            const minutes = Math.floor(playTime / 60);
+            const seconds = playTime % 60;
+            
             const container = document.getElementById('statsContent');
             container.innerHTML = `
                 <div class="stat-item">
                     <span class="stat-label">Total Taps</span>
-                    <span class="stat-value">${gameState.totalTaps}</span>
+                    <span class="stat-value">${gameState.totalTaps.toLocaleString()}</span>
                 </div>
                 <div class="stat-item">
                     <span class="stat-label">Total Earned</span>
-                    <span class="stat-value">${gameState.totalEarned}</span>
+                    <span class="stat-value">${gameState.totalEarned.toLocaleString()}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Current Score</span>
+                    <span class="stat-value">${Math.floor(gameState.score).toLocaleString()}</span>
                 </div>
                 <div class="stat-item">
                     <span class="stat-label">Play Time</span>
-                    <span class="stat-value">${playTime}s</span>
+                    <span class="stat-value">${minutes}m ${seconds}s</span>
                 </div>
                 <div class="stat-item">
                     <span class="stat-label">Taps Per Second</span>
-                    <span class="stat-value">${(gameState.totalTaps / playTime).toFixed(2)}</span>
+                    <span class="stat-value">${playTime > 0 ? (gameState.totalTaps / playTime).toFixed(2) : '0'}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Points Per Tap</span>
+                    <span class="stat-value">${gameState.totalTaps > 0 ? Math.floor(gameState.totalEarned / gameState.totalTaps) : '0'}</span>
                 </div>
             `;
         }
@@ -527,10 +702,25 @@
         function startAutoTapper() {
             setInterval(() => {
                 if (gameState.upgrades.autoTapper > 0) {
-                    const points = gameState.upgrades.autoTapper * gameState.multiplier;
+                    let autoPoints = gameState.upgrades.autoTapper;
+                    
+                    // Apply multipliers
+                    let totalMultiplier = gameState.multiplier;
+                    if (gameState.upgrades.multiplierBoost > 0) {
+                        totalMultiplier += gameState.upgrades.multiplierBoost * 0.5;
+                    }
+                    
+                    // Apply active boost
+                    if (gameState.activeBoost && Date.now() < gameState.boostEndTime) {
+                        totalMultiplier *= gameState.activeBoost.multiplier;
+                    }
+                    
+                    const points = Math.floor(autoPoints * totalMultiplier);
                     gameState.score += points;
                     gameState.totalEarned += points;
+                    
                     updateDisplay();
+                    checkMilestones();
                 }
             }, 1000);
         }
@@ -548,10 +738,29 @@
             try {
                 const saved = localStorage.getItem('glitchedMintGame');
                 if (saved) {
-                    gameState = JSON.parse(saved);
+                    const loadedState = JSON.parse(saved);
+                    // Merge with default state to handle new properties
+                    gameState = { ...gameState, ...loadedState };
+                    // Ensure all upgrade properties exist
+                    gameState.upgrades = { 
+                        tapPower: 0,
+                        autoTapper: 0,
+                        multiplierBoost: 0,
+                        luckyTap: 0,
+                        goldenTouch: 0,
+                        ...gameState.upgrades 
+                    };
                 }
             } catch (e) {
                 console.log('Could not load game');
+            }
+        }
+        
+        // Reset game function
+        function resetGame() {
+            if (confirm('Are you sure you want to reset all progress? This cannot be undone!')) {
+                localStorage.removeItem('glitchedMintGame');
+                location.reload();
             }
         }
         
