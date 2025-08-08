@@ -10,6 +10,18 @@
       background:#0a0a0a; color:white; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
       height:100vh; display:flex; flex-direction:column; overflow:hidden; position:relative; touch-action:manipulation;
     }
+
+    /* --- Intro Screen (added) --- */
+    .intro-screen{
+      position:fixed; inset:0; background:#000;
+      display:flex; align-items:center; justify-content:center;
+      z-index:5000;
+    }
+    .intro-logo{
+      max-width:80%; height:auto; opacity:1; transition:opacity 1s ease;
+      filter:drop-shadow(0 0 18px rgba(255,255,255,0.12));
+    }
+
     .game-container { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
     .score-display { font-size:48px; font-weight:bold; margin-bottom:20px; text-shadow:0 0 20px rgba(255,255,255,0.3); }
     .tap-button{
@@ -86,6 +98,11 @@
   </style>
 </head>
 <body>
+  <!-- Intro overlay (added) -->
+  <div class="intro-screen" id="introScreen">
+    <img class="intro-logo" src="3-bros-studios.png" alt="3 Bros Studios">
+  </div>
+
   <!-- Daily Reward -->
   <button class="daily-reward-btn" id="dailyRewardBtn">🎁 Daily Reward</button>
   <!-- Sound Toggle -->
@@ -286,6 +303,12 @@
       playTone(750, 0.06, 'triangle', 0.003, 0.05, 0.6);
       setTimeout(()=> playTone(520, 0.05, 'triangle', 0.003, 0.04, 0.5), 40);
     }
+    // NEW: Intro startup tone (two-note retro vibe)
+    function sfxIntro(){
+      // Two notes slightly offset (C5 then E5)
+      playTone(523.25, 0.16, 'square', 0.01, 0.10, 0.12);
+      setTimeout(()=> playTone(659.25, 0.16, 'square', 0.01, 0.10, 0.12), 140);
+    }
 
     // =========================
     // DATA: Shop / Achievements
@@ -355,6 +378,21 @@
       renderAchievements();
       startAutoTapper();
       checkDailyReward();
+    });
+
+    // Intro: run once page fully loads resources
+    window.addEventListener('load', ()=>{
+      const intro = document.getElementById('introScreen');
+      const img = intro.querySelector('.intro-logo');
+
+      // Try to play startup tone immediately (may be blocked until first gesture on some mobiles)
+      sfxIntro();
+
+      // After 2s, fade out logo (1s), then hide overlay to cut straight to game
+      setTimeout(()=>{
+        img.style.opacity = 0;
+        setTimeout(()=>{ intro.style.display = 'none'; }, 1000);
+      }, 2000);
     });
 
     function firstUserActionProxy(fn){
