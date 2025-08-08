@@ -88,22 +88,22 @@
             margin-top: 20px;
         }
         
-        /* Bottom Navigation */
+        /* Bottom Navigation - Now with 4 buttons */
         .bottom-nav {
             display: flex;
             justify-content: space-around;
-            padding: 20px;
+            padding: 15px 10px;
             background: rgba(20,20,20,0.95);
             border-top: 1px solid rgba(255,255,255,0.1);
         }
         
         .nav-button {
             flex: 1;
-            margin: 0 10px;
-            padding: 18px;
+            margin: 0 5px;
+            padding: 15px 10px;
             border: none;
-            border-radius: 20px;
-            font-size: 24px;
+            border-radius: 15px;
+            font-size: 18px;
             font-weight: bold;
             color: white;
             cursor: pointer;
@@ -121,6 +121,10 @@
         
         .nav-button.stats {
             background: linear-gradient(135deg, #ff9a00 0%, #ff6600 100%);
+        }
+        
+        .nav-button.achievements {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
         }
         
         .nav-button:active {
@@ -211,6 +215,63 @@
             cursor: not-allowed;
         }
         
+        /* Achievement Items */
+        .achievement-item {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            opacity: 0.5;
+        }
+        
+        .achievement-item.unlocked {
+            opacity: 1;
+            border-color: #FFD700;
+            background: rgba(255,215,0,0.1);
+        }
+        
+        .achievement-icon {
+            font-size: 36px;
+            margin-right: 15px;
+        }
+        
+        .achievement-info h3 {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        
+        .achievement-info p {
+            font-size: 14px;
+            opacity: 0.7;
+        }
+        
+        /* Achievement Popup */
+        .achievement-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: black;
+            padding: 30px;
+            border-radius: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            z-index: 3000;
+            animation: achievementPop 0.5s;
+            box-shadow: 0 0 50px rgba(255,215,0,0.8);
+        }
+        
+        @keyframes achievementPop {
+            0% { transform: translate(-50%, -50%) scale(0); }
+            50% { transform: translate(-50%, -50%) scale(1.2); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+        
         /* Particle Effects */
         .particle {
             position: fixed;
@@ -251,6 +312,29 @@
             color: #00ff41;
         }
         
+        /* Daily Reward Button */
+        .daily-reward-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: black;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            animation: glow 2s infinite;
+            display: none;
+            z-index: 100;
+        }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(255,215,0,0.5); }
+            50% { box-shadow: 0 0 30px rgba(255,215,0,0.8); }
+        }
+        
         /* Notification */
         @keyframes slideIn {
             0% { transform: translate(-50%, -100px); opacity: 0; }
@@ -259,6 +343,11 @@
     </style>
 </head>
 <body>
+    <!-- Daily Reward Button -->
+    <button class="daily-reward-btn" id="dailyRewardBtn">
+        🎁 Daily Reward
+    </button>
+    
     <div class="game-container">
         <h1 class="score-display">Score: <span id="score">0</span></h1>
         
@@ -271,10 +360,11 @@
         </div>
     </div>
     
-    <!-- Bottom Navigation -->
+    <!-- Bottom Navigation - 4 buttons now -->
     <div class="bottom-nav">
         <button class="nav-button shop" id="shopBtn">SHOP</button>
-        <button class="nav-button boosts" id="boostsBtn">BOOSTS</button>
+        <button class="nav-button achievements" id="achievementsBtn">🏆</button>
+        <button class="nav-button boosts" id="boostsBtn">BOOST</button>
         <button class="nav-button stats" id="statsBtn">STATS</button>
     </div>
     
@@ -286,6 +376,17 @@
                 <button class="close-btn" id="closeShop">&times;</button>
             </div>
             <div id="shopItems"></div>
+        </div>
+    </div>
+    
+    <!-- Achievements Modal -->
+    <div class="modal" id="achievementsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">ACHIEVEMENTS</h2>
+                <button class="close-btn" id="closeAchievements">&times;</button>
+            </div>
+            <div id="achievementsList"></div>
         </div>
     </div>
     
@@ -322,8 +423,26 @@
             upgrades: {
                 tapPower: 0,
                 autoTapper: 0,
-                multiplierBoost: 0
-            }
+                multiplierBoost: 0,
+                luckyTap: 0,
+                goldenTouch: 0
+            },
+            achievements: {
+                firstTap: false,
+                reach100: false,
+                reach1000: false,
+                reach10000: false,
+                reach100000: false,
+                tap100Times: false,
+                tap1000Times: false,
+                buyFirstUpgrade: false,
+                maxUpgrade: false,
+                luckyStreak: false
+            },
+            consecutiveLuckyTaps: 0,
+            maxScore: 0,
+            lastDailyReward: 0,
+            dailyStreak: 0
         };
         
         // Shop Items
@@ -351,7 +470,37 @@
                 baseCost: 500,
                 effect: 1,
                 icon: '🤖'
+            },
+            {
+                id: 'luckyTap',
+                name: 'Lucky Tap',
+                description: '10% chance for 10x points',
+                baseCost: 1000,
+                effect: 0.1,
+                icon: '🍀'
+            },
+            {
+                id: 'goldenTouch',
+                name: 'Golden Touch',
+                description: 'All taps worth more',
+                baseCost: 5000,
+                effect: 5,
+                icon: '👑'
             }
+        ];
+        
+        // Achievement definitions
+        const achievements = [
+            { id: 'firstTap', name: 'First Steps', description: 'Make your first tap', reward: 10, icon: '👶' },
+            { id: 'reach100', name: 'Century', description: 'Reach 100 points', reward: 50, icon: '💯' },
+            { id: 'reach1000', name: 'Thousand Club', description: 'Reach 1,000 points', reward: 200, icon: '🎯' },
+            { id: 'reach10000', name: 'Big Leagues', description: 'Reach 10,000 points', reward: 1000, icon: '🏆' },
+            { id: 'reach100000', name: 'Millionaire', description: 'Reach 100,000 points', reward: 10000, icon: '💰' },
+            { id: 'tap100Times', name: 'Persistent', description: 'Tap 100 times', reward: 100, icon: '🔨' },
+            { id: 'tap1000Times', name: 'Tap Master', description: 'Tap 1,000 times', reward: 500, icon: '⚡' },
+            { id: 'buyFirstUpgrade', name: 'Investor', description: 'Buy your first upgrade', reward: 25, icon: '📈' },
+            { id: 'maxUpgrade', name: 'Max Power', description: 'Get any upgrade to level 10', reward: 2000, icon: '💪' },
+            { id: 'luckyStreak', name: 'Lucky Devil', description: 'Get 3 lucky taps in a row', reward: 777, icon: '🍀' }
         ];
         
         // Initialize game
@@ -367,6 +516,9 @@
             document.getElementById('shopBtn').addEventListener('click', function() {
                 openModal('shop');
             });
+            document.getElementById('achievementsBtn').addEventListener('click', function() {
+                openModal('achievements');
+            });
             document.getElementById('boostsBtn').addEventListener('click', function() {
                 openModal('boosts');
             });
@@ -378,6 +530,9 @@
             document.getElementById('closeShop').addEventListener('click', function() {
                 closeModal('shop');
             });
+            document.getElementById('closeAchievements').addEventListener('click', function() {
+                closeModal('achievements');
+            });
             document.getElementById('closeBoosts').addEventListener('click', function() {
                 closeModal('boosts');
             });
@@ -385,18 +540,41 @@
                 closeModal('stats');
             });
             
+            // Daily reward button
+            document.getElementById('dailyRewardBtn').addEventListener('click', claimDailyReward);
+            
             // Initialize displays
             updateDisplay();
             renderShop();
             renderBoosts();
+            renderAchievements();
             startAutoTapper();
+            checkDailyReward();
         });
         
         // Main tap function
         function tap() {
             let basePoints = 1 + gameState.upgrades.tapPower;
-            let totalMultiplier = gameState.multiplier;
             
+            // Golden Touch bonus
+            if (gameState.upgrades.goldenTouch > 0) {
+                basePoints += gameState.upgrades.goldenTouch * 5;
+            }
+            
+            // Lucky Tap chance
+            let isLucky = false;
+            if (gameState.upgrades.luckyTap > 0) {
+                const luckChance = gameState.upgrades.luckyTap * 0.1;
+                if (Math.random() < luckChance) {
+                    basePoints *= 10;
+                    isLucky = true;
+                    gameState.consecutiveLuckyTaps++;
+                } else {
+                    gameState.consecutiveLuckyTaps = 0;
+                }
+            }
+            
+            let totalMultiplier = gameState.multiplier;
             if (gameState.upgrades.multiplierBoost > 0) {
                 totalMultiplier += gameState.upgrades.multiplierBoost * 0.5;
             }
@@ -407,9 +585,95 @@
             gameState.totalTaps++;
             gameState.totalEarned += points;
             
-            createParticle(points);
+            // Special particle for lucky taps
+            if (isLucky) {
+                createParticle(points, '#FFD700');
+                showNotification('LUCKY TAP! 10X POINTS!');
+            } else {
+                createParticle(points, '#00ff41');
+            }
+            
             updateDisplay();
             checkMilestones();
+            checkAchievements();
+        }
+        
+        // Check achievements
+        function checkAchievements() {
+            // First tap
+            if (!gameState.achievements.firstTap && gameState.totalTaps >= 1) {
+                unlockAchievement('firstTap');
+            }
+            
+            // Score achievements
+            if (!gameState.achievements.reach100 && gameState.score >= 100) {
+                unlockAchievement('reach100');
+            }
+            if (!gameState.achievements.reach1000 && gameState.score >= 1000) {
+                unlockAchievement('reach1000');
+            }
+            if (!gameState.achievements.reach10000 && gameState.score >= 10000) {
+                unlockAchievement('reach10000');
+            }
+            if (!gameState.achievements.reach100000 && gameState.score >= 100000) {
+                unlockAchievement('reach100000');
+            }
+            
+            // Tap achievements
+            if (!gameState.achievements.tap100Times && gameState.totalTaps >= 100) {
+                unlockAchievement('tap100Times');
+            }
+            if (!gameState.achievements.tap1000Times && gameState.totalTaps >= 1000) {
+                unlockAchievement('tap1000Times');
+            }
+            
+            // Upgrade achievements
+            const hasUpgrade = Object.values(gameState.upgrades).some(function(level) { return level > 0; });
+            if (!gameState.achievements.buyFirstUpgrade && hasUpgrade) {
+                unlockAchievement('buyFirstUpgrade');
+            }
+            
+            const hasMaxUpgrade = Object.values(gameState.upgrades).some(function(level) { return level >= 10; });
+            if (!gameState.achievements.maxUpgrade && hasMaxUpgrade) {
+                unlockAchievement('maxUpgrade');
+            }
+            
+            // Lucky streak
+            if (!gameState.achievements.luckyStreak && gameState.consecutiveLuckyTaps >= 3) {
+                unlockAchievement('luckyStreak');
+            }
+            
+            // Update max score
+            if (gameState.score > gameState.maxScore) {
+                gameState.maxScore = gameState.score;
+            }
+        }
+        
+        // Unlock achievement
+        function unlockAchievement(id) {
+            const achievement = achievements.find(function(a) { return a.id === id; });
+            if (achievement && !gameState.achievements[id]) {
+                gameState.achievements[id] = true;
+                gameState.score += achievement.reward;
+                
+                // Show achievement popup
+                const popup = document.createElement('div');
+                popup.className = 'achievement-popup';
+                popup.innerHTML = 
+                    '<div style="font-size: 48px; margin-bottom: 10px;">' + achievement.icon + '</div>' +
+                    '<div style="font-size: 28px; margin-bottom: 10px;">ACHIEVEMENT!</div>' +
+                    '<div style="font-size: 24px; margin-bottom: 10px;">' + achievement.name + '</div>' +
+                    '<div style="font-size: 18px; opacity: 0.8; margin-bottom: 10px;">' + achievement.description + '</div>' +
+                    '<div style="font-size: 20px; color: green;">+' + achievement.reward + ' points!</div>';
+                
+                document.body.appendChild(popup);
+                setTimeout(function() { 
+                    popup.remove(); 
+                }, 3000);
+                
+                updateDisplay();
+                renderAchievements();
+            }
         }
         
         // Check multiplier milestones
@@ -426,14 +690,64 @@
             }
         }
         
+        // Daily Reward System
+        function checkDailyReward() {
+            const now = Date.now();
+            const oneDayMs = 24 * 60 * 60 * 1000;
+            const timeSinceLastReward = now - gameState.lastDailyReward;
+            
+            if (timeSinceLastReward >= oneDayMs || gameState.lastDailyReward === 0) {
+                document.getElementById('dailyRewardBtn').style.display = 'block';
+                
+                // Check if streak should reset (more than 48 hours)
+                if (timeSinceLastReward > oneDayMs * 2 && gameState.lastDailyReward !== 0) {
+                    gameState.dailyStreak = 0;
+                }
+            }
+        }
+        
+        function claimDailyReward() {
+            const now = Date.now();
+            const oneDayMs = 24 * 60 * 60 * 1000;
+            
+            if (now - gameState.lastDailyReward >= oneDayMs || gameState.lastDailyReward === 0) {
+                gameState.dailyStreak++;
+                gameState.lastDailyReward = now;
+                
+                // Calculate reward based on streak
+                const baseReward = 100;
+                const streakBonus = gameState.dailyStreak * 50;
+                const totalReward = baseReward + streakBonus;
+                
+                gameState.score += totalReward;
+                
+                // Show reward popup
+                const popup = document.createElement('div');
+                popup.className = 'achievement-popup';
+                popup.innerHTML = 
+                    '<div style="font-size: 48px; margin-bottom: 10px;">🎁</div>' +
+                    '<div style="font-size: 28px; margin-bottom: 10px;">DAILY REWARD!</div>' +
+                    '<div style="font-size: 20px; margin-bottom: 10px;">Day ' + gameState.dailyStreak + ' Streak!</div>' +
+                    '<div style="font-size: 24px; color: green;">+' + totalReward + ' points!</div>';
+                
+                document.body.appendChild(popup);
+                setTimeout(function() {
+                    popup.remove();
+                }, 3000);
+                
+                document.getElementById('dailyRewardBtn').style.display = 'none';
+                updateDisplay();
+            }
+        }
+        
         // Create floating particle effect
-        function createParticle(points) {
+        function createParticle(points, color) {
             const particle = document.createElement('div');
             particle.className = 'particle';
             particle.textContent = '+' + points;
             particle.style.left = '50%';
             particle.style.top = '50%';
-            particle.style.color = '#00ff41';
+            particle.style.color = color || '#00ff41';
             document.body.appendChild(particle);
             setTimeout(function() { 
                 particle.remove(); 
@@ -443,19 +757,7 @@
         // Show notification
         function showNotification(message) {
             const notification = document.createElement('div');
-            notification.style.cssText = `
-                position: fixed;
-                top: 20%;
-                left: 50%;
-                transform: translateX(-50%);
-                background: linear-gradient(135deg, #667eea, #764ba2);
-                padding: 20px 40px;
-                border-radius: 20px;
-                font-size: 24px;
-                font-weight: bold;
-                z-index: 2000;
-                animation: slideIn 0.5s;
-            `;
+            notification.style.cssText = 'position: fixed; top: 20%; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #667eea, #764ba2); padding: 20px 40px; border-radius: 20px; font-size: 24px; font-weight: bold; z-index: 2000; animation: slideIn 0.5s;';
             notification.textContent = message;
             document.body.appendChild(notification);
             setTimeout(function() { 
@@ -465,7 +767,7 @@
         
         // Update display
         function updateDisplay() {
-            document.getElementById('score').textContent = Math.floor(gameState.score);
+            document.getElementById('score').textContent = Math.floor(gameState.score).toLocaleString();
             
             let displayMultiplier = gameState.multiplier;
             if (gameState.upgrades.multiplierBoost > 0) {
@@ -483,6 +785,9 @@
             if (type === 'shop') {
                 renderShop();
             }
+            if (type === 'achievements') {
+                renderAchievements();
+            }
         }
         
         function closeModal(type) {
@@ -499,18 +804,14 @@
                 const cost = Math.floor(item.baseCost * Math.pow(1.5, level));
                 const canAfford = gameState.score >= cost;
                 
-                html += `
-                    <div class="shop-item">
-                        <div class="shop-item-info">
-                            <h3>${item.icon} ${item.name} (Lvl ${level})</h3>
-                            <p>${item.description}</p>
-                            <p style="color: ${canAfford ? '#00ff41' : '#ff4444'}">Cost: ${cost} points</p>
-                        </div>
-                        <button class="buy-btn" id="buy-${item.id}" ${!canAfford ? 'disabled' : ''}>
-                            BUY
-                        </button>
-                    </div>
-                `;
+                html += '<div class="shop-item">' +
+                    '<div class="shop-item-info">' +
+                    '<h3>' + item.icon + ' ' + item.name + ' (Lvl ' + level + ')</h3>' +
+                    '<p>' + item.description + '</p>' +
+                    '<p style="color: ' + (canAfford ? '#00ff41' : '#ff4444') + '">Cost: ' + cost.toLocaleString() + ' points</p>' +
+                    '</div>' +
+                    '<button class="buy-btn" id="buy-' + item.id + '" ' + (!canAfford ? 'disabled' : '') + '>BUY</button>' +
+                    '</div>';
             });
             
             container.innerHTML = html;
@@ -537,21 +838,80 @@
                 
                 updateDisplay();
                 renderShop();
-                showNotification(item.name + ' upgraded!');
+                showNotification(item.name + ' upgraded to Lvl ' + gameState.upgrades[id] + '!');
+                checkAchievements();
             }
+        }
+        
+        // Render achievements
+        function renderAchievements() {
+            const container = document.getElementById('achievementsList');
+            let html = '';
+            let unlockedCount = 0;
+            
+            achievements.forEach(function(achievement) {
+                const isUnlocked = gameState.achievements[achievement.id];
+                if (isUnlocked) unlockedCount++;
+                
+                html += '<div class="achievement-item ' + (isUnlocked ? 'unlocked' : '') + '">' +
+                    '<div class="achievement-icon">' + achievement.icon + '</div>' +
+                    '<div class="achievement-info">' +
+                    '<h3>' + achievement.name + (isUnlocked ? ' ✓' : '') + '</h3>' +
+                    '<p>' + achievement.description + '</p>' +
+                    '<p style="color: #FFD700;">Reward: ' + achievement.reward + ' points</p>' +
+                    '</div>' +
+                    '</div>';
+            });
+            
+            // Add progress at top
+            container.innerHTML = '<div style="text-align: center; margin-bottom: 20px; font-size: 20px;">' +
+                'Unlocked: ' + unlockedCount + '/' + achievements.length +
+                '</div>' + html;
         }
         
         // Boosts functions
         function renderBoosts() {
             const container = document.getElementById('boostItems');
-            container.innerHTML = `
-                <div class="shop-item">
-                    <div class="shop-item-info">
-                        <h3>⚡ Coming Soon!</h3>
-                        <p>Temporary boosts will be added in the next update</p>
-                    </div>
-                </div>
-            `;
+            container.innerHTML = 
+                '<div class="shop-item">' +
+                '<div class="shop-item-info">' +
+                '<h3>⚡ 2X Boost (30s)</h3>' +
+                '<p>Double your earnings for 30 seconds</p>' +
+                '<p style="color: #00ff41;">Cost: 100 points</p>' +
+                '</div>' +
+                '<button class="buy-btn" id="boost-double">ACTIVATE</button>' +
+                '</div>' +
+                '<div class="shop-item">' +
+                '<div class="shop-item-info">' +
+                '<h3>💥 Mega Boost (60s)</h3>' +
+                '<p>10X multiplier for 60 seconds</p>' +
+                '<p style="color: #00ff41;">Cost: 500 points</p>' +
+                '</div>' +
+                '<button class="buy-btn" id="boost-mega">ACTIVATE</button>' +
+                '</div>';
+            
+            // Add event listeners
+            const doubleBtn = document.getElementById('boost-double');
+            if (doubleBtn) {
+                doubleBtn.addEventListener('click', function() {
+                    if (gameState.score >= 100) {
+                        gameState.score -= 100;
+                        showNotification('2X Boost Activated!');
+                        updateDisplay();
+                    }
+                });
+            }
+            
+            const megaBtn = document.getElementById('boost-mega');
+            if (megaBtn) {
+                megaBtn.addEventListener('click', function() {
+                    if (gameState.score >= 500) {
+                        gameState.score -= 500;
+                        showNotification('Mega Boost Activated!');
+                        updateDisplay();
+                    }
+                });
+            }
         }
         
         // Stats functions
@@ -559,26 +919,46 @@
             const playTime = Math.floor((Date.now() - gameState.startTime) / 1000);
             const minutes = Math.floor(playTime / 60);
             const seconds = playTime % 60;
+            const unlockedAchievements = Object.values(gameState.achievements).filter(function(a) { return a; }).length;
             
             const container = document.getElementById('statsContent');
-            container.innerHTML = `
-                <div class="stat-item">
-                    <span class="stat-label">Total Taps</span>
-                    <span class="stat-value">${gameState.totalTaps}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Total Earned</span>
-                    <span class="stat-value">${gameState.totalEarned}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Play Time</span>
-                    <span class="stat-value">${minutes}m ${seconds}s</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Taps Per Second</span>
-                    <span class="stat-value">${playTime > 0 ? (gameState.totalTaps / playTime).toFixed(2) : '0'}</span>
-                </div>
-            `;
+            container.innerHTML = 
+                '<div class="stat-item">' +
+                '<span class="stat-label">Total Taps</span>' +
+                '<span class="stat-value">' + gameState.totalTaps.toLocaleString() + '</span>' +
+                '</div>' +
+                '<div class="stat-item">' +
+                '<span class="stat-label">Total Earned</span>' +
+                '<span class="stat-value">' + gameState.totalEarned.toLocaleString() + '</span>' +
+                '</div>' +
+                '<div class="stat-item">' +
+                '<span class="stat-label">Current Score</span>' +
+                '<span class="stat-value">' + Math.floor(gameState.score).toLocaleString() + '</span>' +
+                '</div>' +
+                '<div class="stat-item">' +
+                '<span class="stat-label">Highest Score</span>' +
+                '<span class="stat-value">' + Math.floor(gameState.maxScore).toLocaleString() + '</span>' +
+                '</div>' +
+                '<div class="stat-item">' +
+                '<span class="stat-label">Play Time</span>' +
+                '<span class="stat-value">' + minutes + 'm ' + seconds + 's</span>' +
+                '</div>' +
+                '<div class="stat-item">' +
+                '<span class="stat-label">Taps Per Second</span>' +
+                '<span class="stat-value">' + (playTime > 0 ? (gameState.totalTaps / playTime).toFixed(2) : '0') + '</span>' +
+                '</div>' +
+                '<div class="stat-item">' +
+                '<span class="stat-label">Points Per Tap</span>' +
+                '<span class="stat-value">' + (gameState.totalTaps > 0 ? Math.floor(gameState.totalEarned / gameState.totalTaps) : '0') + '</span>' +
+                '</div>' +
+                '<div class="stat-item">' +
+                '<span class="stat-label">Achievements</span>' +
+                '<span class="stat-value">' + unlockedAchievements + '/' + achievements.length + '</span>' +
+                '</div>' +
+                '<div class="stat-item">' +
+                '<span class="stat-label">Daily Streak</span>' +
+                '<span class="stat-value">' + gameState.dailyStreak + ' days</span>' +
+                '</div>';
         }
         
         // Auto Tapper
@@ -598,6 +978,7 @@
                     
                     updateDisplay();
                     checkMilestones();
+                    checkAchievements();
                 }
             }, 1000);
         }
