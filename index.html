@@ -154,7 +154,7 @@
     // =========================
     // PERSISTENCE (localStorage)
     // =========================
-    const STORE_KEY = "glitchedmint-bot2:v3"; // bump for sound settings
+    const STORE_KEY = "glitchedmint-bot2:v3"; // includes sound settings + UI clicks
 
     const defaultState = {
       score: 0, multiplier: 1, totalTaps: 0, totalEarned: 0,
@@ -178,6 +178,7 @@
         Object.assign(merged, parsed);
         if(parsed.upgrades) Object.assign(merged.upgrades, parsed.upgrades);
 
+        // migrate old boolean achievements if present
         if (!merged.achievementsStatus || Object.keys(merged.achievementsStatus).length === 0) {
           merged.achievementsStatus = {};
           if (parsed.achievements && typeof parsed.achievements === 'object') {
@@ -202,13 +203,9 @@
     let gameState = loadState();
 
     // =========================
-    // AUDIO ENGINE (Web Audio)
+    // AUDIO ENGINE (Web Audio) — retro synth vibes
     // =========================
-    const audio = {
-      ctx: null,
-      master: null,
-      unlocked: false
-    };
+    const audio = { ctx:null, master:null, unlocked:false };
 
     function audioEnabled(){ return !!(gameState.sound && gameState.sound.enabled); }
 
@@ -235,7 +232,6 @@
       audio.master.gain.value = Math.max(0, Math.min(1, vol));
     }
 
-    // Basic tone with short envelope
     function playTone(freq=440, dur=0.09, type='sine', attack=0.005, decay=0.06, gain=0.9){
       if (!audioEnabled()) return;
       ensureAudio();
@@ -253,7 +249,6 @@
       osc.stop(now + dur);
     }
 
-    // Sweep effect
     function playSweep(start=600, end=240, dur=0.12, type='triangle'){
       if (!audioEnabled()) return;
       ensureAudio();
@@ -272,7 +267,6 @@
       osc.stop(now + dur);
     }
 
-    // Arpeggio (for lucky/claim)
     function playArp(freqs=[800,1000,1200], step=0.05, type='sine'){
       if (!audioEnabled()) return;
       ensureAudio();
@@ -280,13 +274,18 @@
       freqs.forEach((f,i)=> setTimeout(()=> playTone(f, 0.08, type, 0.005, 0.06, 0.7), i*step*1000));
     }
 
-    // Public SFX wrappers
+    // SFX (retro)
     function sfxTap(){ playSweep(700, 350, 0.08, 'triangle'); navigator.vibrate?.(8); }
     function sfxLucky(){ playArp([900,1200,1500,1800], 0.045, 'square'); navigator.vibrate?.([10,40,10]); }
     function sfxBuy(){ playArp([500,700,900], 0.06, 'sine'); }
     function sfxError(){ playArp([220,180,140], 0.06, 'sawtooth'); }
     function sfxClaim(){ playArp([800,1000,1300,1600], 0.05, 'triangle'); }
     function sfxReward(){ playArp([600,800,1000,1200,1000,1200], 0.07, 'sine'); }
+    // NEW: UI click blip
+    function sfxUI(){ 
+      playTone(750, 0.06, 'triangle', 0.003, 0.05, 0.6);
+      setTimeout(()=> playTone(520, 0.05, 'triangle', 0.003, 0.04, 0.5), 40);
+    }
 
     // =========================
     // DATA: Shop / Achievements
@@ -320,22 +319,25 @@
       tapBtn.addEventListener('click', firstUserActionProxy(tap));
       tapBtn.addEventListener('touchstart', e=>{ e.preventDefault(); firstUserActionProxy(tap)(); });
 
-      document.getElementById('shopBtn').addEventListener('click', firstUserActionProxy(()=>openModal('shop')));
-      document.getElementById('achievementsBtn').addEventListener('click', firstUserActionProxy(()=>openModal('achievements')));
-      document.getElementById('boostsBtn').addEventListener('click', firstUserActionProxy(()=>openModal('boosts')));
-      document.getElementById('statsBtn').addEventListener('click', firstUserActionProxy(()=>openModal('stats')));
+      // Bottom buttons: add UI click sound
+      document.getElementById('shopBtn').addEventListener('click', firstUserActionProxy(()=>{ sfxUI(); openModal('shop'); }));
+      document.getElementById('achievementsBtn').addEventListener('click', firstUserActionProxy(()=>{ sfxUI(); openModal('achievements'); }));
+      document.getElementById('boostsBtn').addEventListener('click', firstUserActionProxy(()=>{ sfxUI(); openModal('boosts'); }));
+      document.getElementById('statsBtn').addEventListener('click', firstUserActionProxy(()=>{ sfxUI(); openModal('stats'); }));
 
-      document.getElementById('closeShop').addEventListener('click', ()=>closeModal('shop'));
-      document.getElementById('closeAchievements').addEventListener('click', ()=>closeModal('achievements'));
-      document.getElementById('closeBoosts').addEventListener('click', ()=>closeModal('boosts'));
-      document.getElementById('closeStats').addEventListener('click', ()=>closeModal('stats'));
+      // Close buttons: also click sound (no need to proxy again)
+      document.getElementById('closeShop').addEventListener('click', ()=>{ sfxUI(); closeModal('shop'); });
+      document.getElementById('closeAchievements').addEventListener('click', ()=>{ sfxUI(); closeModal('achievements'); });
+      document.getElementById('closeBoosts').addEventListener('click', ()=>{ sfxUI(); closeModal('boosts'); });
+      document.getElementById('closeStats').addEventListener('click', ()=>{ sfxUI(); closeModal('stats'); });
 
       document.getElementById('dailyRewardBtn').addEventListener('click', firstUserActionProxy(claimDailyReward));
 
-      // Sound toggle
+      // Sound toggle (blip + toggle)
       const soundToggle = document.getElementById('soundToggle');
       updateSoundToggleIcon();
       soundToggle.addEventListener('click', ()=>{
+        sfxUI();
         gameState.sound.enabled = !gameState.sound.enabled;
         if (gameState.sound.enabled) {
           ensureAudio();
@@ -501,8 +503,8 @@
         popup.className = 'achievement-popup';
         popup.innerHTML =
           `<div style="font-size:48px; margin-bottom:10px;">🎁</div>
-           <div style="font-size:28px; margin-bottom:10px;">DAILY REWARD!</div>
-           <div style="font-size:20px; margin-bottom:10px;">Day ${gameState.dailyStreak} Streak!</div>
+           <div style="font-size:28px; margin-bottom:10px;">DAILY REWARD!</</div>
+           <div style="font-size:20px; margin-bottom:10px;">Day ${gameState.dailyStreak} Streak!</</div>
            <div style="font-size:24px; color:green;">+${totalReward} points!</div>`;
         document.body.appendChild(popup);
         setTimeout(()=>popup.remove(),3000);
@@ -632,6 +634,7 @@
           Unlocked: ${unlocked}/${achievements.length} &nbsp;|&nbsp; Claimed: ${claimed}/${achievements.length}
         </div>` + html;
 
+      // wire claim buttons
       container.querySelectorAll('[data-claim]').forEach(btn=>{
         btn.addEventListener('click', ()=> claimAchievement(btn.getAttribute('data-claim')));
       });
@@ -717,7 +720,7 @@
       }, 1000);
     }
 
-    // Wire claim buttons created dynamically
+    // Global delegation for dynamically created claim buttons (backup)
     document.addEventListener('click', (e)=>{
       const target = e.target;
       if (target && target.matches('[data-claim]')) {
