@@ -1,555 +1,608 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>GlitchedMint-Bot2</title>
-    <style>
-        * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; }
-        body {
-            background:#0a0a0a; color:white; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-            height:100vh; display:flex; flex-direction:column; overflow:hidden; position:relative; touch-action:manipulation;
-        }
-        .game-container { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
-        .score-display { font-size:48px; font-weight:bold; margin-bottom:20px; text-shadow:0 0 20px rgba(255,255,255,0.3); }
-        .tap-button{
-            width:250px;height:250px;border-radius:50%;background:#00ff41;border:3px solid #00ff41;color:white;
-            font-size:36px;font-weight:bold;cursor:pointer;position:relative;
-            box-shadow:0 0 60px #00ff41,0 0 100px #00ff41,inset 0 0 60px rgba(0,255,65,0.3);
-            transition:transform 0.1s; animation:pulse 2s infinite; margin:40px 0; -webkit-tap-highlight-color:transparent;
-        }
-        @keyframes pulse{
-            0%,100%{box-shadow:0 0 60px #00ff41,0 0 100px #00ff41,inset 0 0 60px rgba(0,255,65,0.3);}
-            50%{box-shadow:0 0 80px #00ff41,0 0 120px #00ff41,inset 0 0 80px rgba(0,255,65,0.4);}
-        }
-        .tap-button:active{ transform:scale(0.95); box-shadow:0 0 100px #00ff41,0 0 150px #00ff41,inset 0 0 80px rgba(0,255,65,0.5);}
-        .multiplier-badge{
-            background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); padding:12px 40px;border-radius:30px;font-size:32px;font-weight:bold;
-            box-shadow:0 4px 20px rgba(102,126,234,0.4); margin-top:20px;
-        }
-        .bottom-nav{ display:flex; justify-content:space-around; padding:15px 10px; background:rgba(20,20,20,0.95); border-top:1px solid rgba(255,255,255,0.1); }
-        .nav-button{
-            flex:1; margin:0 5px; padding:15px 10px; border:none; border-radius:15px; font-size:18px; font-weight:bold; color:white; cursor:pointer; transition:all .3s;
-            -webkit-tap-highlight-color:transparent;
-        }
-        .nav-button.shop{ background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);}
-        .nav-button.boosts{ background:linear-gradient(135deg,#00ff41 0%,#00b030 100%);}
-        .nav-button.stats{ background:linear-gradient(135deg,#ff9a00 0%,#ff6600 100%);}
-        .nav-button.achievements{ background:linear-gradient(135deg,#FFD700 0%,#FFA500 100%);}
-        .nav-button:active{ transform:scale(0.95); }
-        .modal{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.95); z-index:1000; padding:20px; overflow-y:auto; }
-        .modal.active{ display:block; }
-        .modal-content{ max-width:400px; margin:0 auto; padding:20px; }
-        .modal-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; }
-        .modal-title{ font-size:32px; font-weight:bold; }
-        .close-btn{ background:none; border:none; color:white; font-size:36px; cursor:pointer; padding:0; width:40px; height:40px; }
-        .shop-item{
-            background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:15px; padding:15px; margin-bottom:15px;
-            display:flex; justify-content:space-between; align-items:center;
-        }
-        .shop-item-info h3{ font-size:20px; margin-bottom:5px; }
-        .shop-item-info p{ font-size:14px; opacity:0.7; }
-        .buy-btn{ background:#00ff41; border:none; padding:10px 20px; border-radius:10px; color:black; font-weight:bold; cursor:pointer; }
-        .buy-btn:disabled{ background:#555; cursor:not-allowed; }
-        .achievement-item{
-            background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:15px; padding:15px; margin-bottom:15px; display:flex; align-items:center; opacity:.5;
-        }
-        .achievement-item.unlocked{ opacity:1; border-color:#FFD700; background:rgba(255,215,0,0.1); }
-        .achievement-icon{ font-size:36px; margin-right:15px; }
-        .achievement-info h3{ font-size:18px; margin-bottom:5px; }
-        .achievement-info p{ font-size:14px; opacity:.7; }
-        .achievement-popup{
-            position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:linear-gradient(135deg,#FFD700,#FFA500);
-            color:black; padding:30px; border-radius:20px; font-size:24px; font-weight:bold; text-align:center; z-index:3000;
-            animation:achievementPop .5s; box-shadow:0 0 50px rgba(255,215,0,.8);
-        }
-        @keyframes achievementPop{ 0%{transform:translate(-50%,-50%) scale(0);} 50%{transform:translate(-50%,-50%) scale(1.2);} 100%{transform:translate(-50%,-50%) scale(1);} }
-        .particle{ position:fixed; pointer-events:none; font-size:24px; font-weight:bold; animation:float 1s ease-out forwards; z-index:999; }
-        @keyframes float{ 0%{opacity:1; transform:translateY(0) scale(1);} 100%{opacity:0; transform:translateY(-100px) scale(1.5);} }
-        .stat-item{ background:rgba(255,255,255,0.05); border-radius:10px; padding:15px; margin-bottom:10px; display:flex; justify-content:space-between; }
-        .stat-label{ opacity:.7; } .stat-value{ font-weight:bold; color:#00ff41; }
-        .daily-reward-btn{
-            position:fixed; top:20px; left:20px; background:linear-gradient(135deg,#FFD700,#FFA500); color:black; border:none; padding:12px 20px; border-radius:15px;
-            font-size:16px; font-weight:bold; cursor:pointer; animation:glow 2s infinite; display:none; z-index:100;
-        }
-        @keyframes glow{ 0%,100%{box-shadow:0 0 20px rgba(255,215,0,0.5);} 50%{box-shadow:0 0 30px rgba(255,215,0,0.8);} }
-        @keyframes slideIn{ 0%{ transform:translate(-50%,-100px); opacity:0;} 100%{ transform:translate(-50%,0); opacity:1;} }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>GlitchedMint-Bot2</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; }
+    body {
+      background:#0a0a0a; color:white; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+      height:100vh; display:flex; flex-direction:column; overflow:hidden; position:relative; touch-action:manipulation;
+    }
+    .game-container { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
+    .score-display { font-size:48px; font-weight:bold; margin-bottom:20px; text-shadow:0 0 20px rgba(255,255,255,0.3); }
+    .tap-button{
+      width:250px;height:250px;border-radius:50%;background:#00ff41;border:3px solid #00ff41;color:white;
+      font-size:36px;font-weight:bold;cursor:pointer;position:relative;
+      box-shadow:0 0 60px #00ff41,0 0 100px #00ff41,inset 0 0 60px rgba(0,255,65,0.3);
+      transition:transform 0.1s; animation:pulse 2s infinite; margin:40px 0; -webkit-tap-highlight-color:transparent;
+    }
+    @keyframes pulse{
+      0%,100%{box-shadow:0 0 60px #00ff41,0 0 100px #00ff41,inset 0 0 60px rgba(0,255,65,0.3);}
+      50%{box-shadow:0 0 80px #00ff41,0 0 120px #00ff41,inset 0 0 80px rgba(0,255,65,0.4);}
+    }
+    .tap-button:active{ transform:scale(0.95); box-shadow:0 0 100px #00ff41,0 0 150px #00ff41,inset 0 0 80px rgba(0,255,65,0.5);}
+    .multiplier-badge{
+      background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); padding:12px 40px;border-radius:30px;font-size:32px;font-weight:bold;
+      box-shadow:0 4px 20px rgba(102,126,234,0.4); margin-top:20px;
+    }
+    .bottom-nav{ display:flex; justify-content:space-around; padding:15px 10px; background:rgba(20,20,20,0.95); border-top:1px solid rgba(255,255,255,0.1); }
+    .nav-button{
+      flex:1; margin:0 5px; padding:15px 10px; border:none; border-radius:15px; font-size:18px; font-weight:bold; color:white; cursor:pointer; transition:all .3s;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .nav-button.shop{ background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);}
+    .nav-button.boosts{ background:linear-gradient(135deg,#00ff41 0%,#00b030 100%);}
+    .nav-button.stats{ background:linear-gradient(135deg,#ff9a00 0%,#ff6600 100%);}
+    .nav-button.achievements{ background:linear-gradient(135deg,#FFD700 0%,#FFA500 100%);}
+    .nav-button:active{ transform:scale(0.95); }
+    .modal{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.95); z-index:1000; padding:20px; overflow-y:auto; }
+    .modal.active{ display:block; }
+    .modal-content{ max-width:400px; margin:0 auto; padding:20px; }
+    .modal-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; }
+    .modal-title{ font-size:32px; font-weight:bold; }
+    .close-btn{ background:none; border:none; color:white; font-size:36px; cursor:pointer; padding:0; width:40px; height:40px; }
+    .shop-item{
+      background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:15px; padding:15px; margin-bottom:15px;
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .shop-item-info h3{ font-size:20px; margin-bottom:5px; }
+    .shop-item-info p{ font-size:14px; opacity:0.7; }
+    .buy-btn{ background:#00ff41; border:none; padding:10px 20px; border-radius:10px; color:black; font-weight:bold; cursor:pointer; }
+    .buy-btn:disabled{ background:#555; cursor:not-allowed; }
+    .achievement-item{
+      background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:15px; padding:15px; margin-bottom:15px; display:flex; align-items:center; opacity:.5;
+    }
+    .achievement-item.unlocked{ opacity:1; border-color:#FFD700; background:rgba(255,215,0,0.1); }
+    .achievement-icon{ font-size:36px; margin-right:15px; }
+    .achievement-info h3{ font-size:18px; margin-bottom:5px; }
+    .achievement-info p{ font-size:14px; opacity:.7; }
+    .achievement-popup{
+      position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:linear-gradient(135deg,#FFD700,#FFA500);
+      color:black; padding:30px; border-radius:20px; font-size:24px; font-weight:bold; text-align:center; z-index:3000;
+      animation:achievementPop .5s; box-shadow:0 0 50px rgba(255,215,0,.8);
+    }
+    @keyframes achievementPop{ 0%{transform:translate(-50%,-50%) scale(0);} 50%{transform:translate(-50%,-50%) scale(1.2);} 100%{transform:translate(-50%,-50%) scale(1);} }
+    .particle{ position:fixed; pointer-events:none; font-size:24px; font-weight:bold; animation:float 1s ease-out forwards; z-index:999; }
+    @keyframes float{ 0%{opacity:1; transform:translateY(0) scale(1);} 100%{opacity:0; transform:translateY(-100px) scale(1.5);} }
+    .stat-item{ background:rgba(255,255,255,0.05); border-radius:10px; padding:15px; margin-bottom:10px; display:flex; justify-content:space-between; }
+    .stat-label{ opacity:.7; } .stat-value{ font-weight:bold; color:#00ff41; }
+    .daily-reward-btn{
+      position:fixed; top:20px; left:20px; background:linear-gradient(135deg,#FFD700,#FFA500); color:black; border:none; padding:12px 20px; border-radius:15px;
+      font-size:16px; font-weight:bold; cursor:pointer; animation:glow 2s infinite; display:none; z-index:100;
+    }
+    @keyframes glow{ 0%,100%{box-shadow:0 0 20px rgba(255,215,0,0.5);} 50%{box-shadow:0 0 30px rgba(255,215,0,0.8);} }
+    @keyframes slideIn{ 0%{ transform:translate(-50%,-100px); opacity:0;} 100%{ transform:translate(-50%,0); opacity:1;} }
+  </style>
 </head>
 <body>
-    <button class="daily-reward-btn" id="dailyRewardBtn">🎁 Daily Reward</button>
+  <!-- Daily Reward -->
+  <button class="daily-reward-btn" id="dailyRewardBtn">🎁 Daily Reward</button>
 
-    <div class="game-container">
-        <h1 class="score-display">Score: <span id="score">0</span></h1>
-        <button class="tap-button" id="tapButton">CLICK ME!</button>
-        <div class="multiplier-badge" id="multiplierBadge">X<span id="multiplierValue">1</span></div>
+  <!-- Main -->
+  <div class="game-container">
+    <h1 class="score-display">Score: <span id="score">0</span></h1>
+    <button class="tap-button" id="tapButton">CLICK ME!</button>
+    <div class="multiplier-badge" id="multiplierBadge">X<span id="multiplierValue">1</span></div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="bottom-nav">
+    <button class="nav-button shop" id="shopBtn">SHOP</button>
+    <button class="nav-button achievements" id="achievementsBtn">🏆</button>
+    <button class="nav-button boosts" id="boostsBtn">BOOST</button>
+    <button class="nav-button stats" id="statsBtn">STATS</button>
+  </div>
+
+  <!-- Shop Modal -->
+  <div class="modal" id="shopModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">SHOP</h2>
+        <button class="close-btn" id="closeShop">&times;</button>
+      </div>
+      <div id="shopItems"></div>
     </div>
+  </div>
 
-    <div class="bottom-nav">
-        <button class="nav-button shop" id="shopBtn">SHOP</button>
-        <button class="nav-button achievements" id="achievementsBtn">🏆</button>
-        <button class="nav-button boosts" id="boostsBtn">BOOST</button>
-        <button class="nav-button stats" id="statsBtn">STATS</button>
+  <!-- Achievements Modal -->
+  <div class="modal" id="achievementsModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">ACHIEVEMENTS</h2>
+        <button class="close-btn" id="closeAchievements">&times;</button>
+      </div>
+      <div id="achievementsList"></div>
     </div>
+  </div>
 
-    <!-- Shop Modal -->
-    <div class="modal" id="shopModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title">SHOP</h2>
-                <button class="close-btn" id="closeShop">&times;</button>
+  <!-- Boosts Modal -->
+  <div class="modal" id="boostsModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">BOOSTS</h2>
+        <button class="close-btn" id="closeBoosts">&times;</button>
+      </div>
+      <div id="boostItems"></div>
+    </div>
+  </div>
+
+  <!-- Stats Modal -->
+  <div class="modal" id="statsModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">STATS</h2>
+        <button class="close-btn" id="closeStats">&times;</button>
+      </div>
+      <div id="statsContent"></div>
+    </div>
+  </div>
+
+  <script>
+    // =========================
+    // PERSISTENCE (localStorage)
+    // =========================
+    const STORE_KEY = "glitchedmint-bot2:v2"; // version bumped for claimable achievements
+
+    const defaultState = {
+      score: 0, multiplier: 1, totalTaps: 0, totalEarned: 0,
+      startTime: Date.now(),
+      upgrades: { tapPower:0, autoTapper:0, multiplierBoost:0, luckyTap:0, goldenTouch:0 },
+      // NEW: "locked" | "unclaimed" | "claimed"
+      achievementsStatus: {},
+      // legacy key will be migrated if present
+      achievements: undefined,
+      consecutiveLuckyTaps:0, maxScore:0, lastDailyReward:0, dailyStreak:0
+    };
+
+    function loadState(){
+      try{
+        // try v2, then fall back to v1
+        const raw = localStorage.getItem(STORE_KEY) || localStorage.getItem("glitchedmint-bot2:v1");
+        if(!raw) return { ...defaultState };
+        const parsed = JSON.parse(raw);
+
+        // deep-merge into defaults for forward-compat
+        const merged = JSON.parse(JSON.stringify(defaultState));
+        Object.assign(merged, parsed);
+        if(parsed.upgrades) Object.assign(merged.upgrades, parsed.upgrades);
+
+        // --- MIGRATION: boolean achievements → status map ---
+        if (!merged.achievementsStatus || Object.keys(merged.achievementsStatus).length === 0) {
+          merged.achievementsStatus = {};
+          if (parsed.achievements && typeof parsed.achievements === 'object') {
+            for (const [id, val] of Object.entries(parsed.achievements)) {
+              merged.achievementsStatus[id] = val ? "claimed" : "locked";
+            }
+          }
+        }
+        return merged;
+      }catch{ return { ...defaultState }; }
+    }
+    function saveState(state){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch{} }
+
+    let saveTimer=null;
+    function persist(throttle=true){
+      if(!throttle){ saveState(gameState); return; }
+      if(saveTimer) return;
+      saveTimer = setTimeout(()=>{ saveTimer=null; saveState(gameState); }, 400);
+    }
+
+    let gameState = loadState();
+
+    // =========================
+    // DATA: Shop / Achievements
+    // =========================
+    const shopItems = [
+      { id:'tapPower', name:'Tap Power', description:'Increase points per tap', baseCost:50, effect:1, icon:'👆' },
+      { id:'multiplierBoost', name:'Multiplier Boost', description:'Increase base multiplier', baseCost:200, effect:0.5, icon:'✨' },
+      { id:'autoTapper', name:'Auto Tapper', description:'Auto tap every second', baseCost:500, effect:1, icon:'🤖' },
+      { id:'luckyTap', name:'Lucky Tap', description:'10% chance for 10x points', baseCost:1000, effect:0.1, icon:'🍀' },
+      { id:'goldenTouch', name:'Golden Touch', description:'All taps worth more', baseCost:5000, effect:5, icon:'👑' }
+    ];
+
+    const achievements = [
+      { id:'firstTap',     name:'First Steps',     description:'Make your first tap',       reward:10,    icon:'👶' },
+      { id:'reach100',     name:'Century',         description:'Reach 100 points',          reward:50,    icon:'💯' },
+      { id:'reach1000',    name:'Thousand Club',   description:'Reach 1,000 points',        reward:200,   icon:'🎯' },
+      { id:'reach10000',   name:'Big Leagues',     description:'Reach 10,000 points',       reward:1000,  icon:'🏆' },
+      { id:'reach100000',  name:'Millionaire',     description:'Reach 100,000 points',      reward:10000, icon:'💰' },
+      { id:'tap100Times',  name:'Persistent',      description:'Tap 100 times',             reward:100,   icon:'🔨' },
+      { id:'tap1000Times', name:'Tap Master',      description:'Tap 1,000 times',           reward:500,   icon:'⚡' },
+      { id:'buyFirstUpgrade', name:'Investor',     description:'Buy your first upgrade',    reward:25,    icon:'📈' },
+      { id:'maxUpgrade',   name:'Max Power',       description:'Get any upgrade to level 10', reward:2000, icon:'💪' },
+      { id:'luckyStreak',  name:'Lucky Devil',     description:'Get 3 lucky taps in a row', reward:777,   icon:'🍀' }
+    ];
+
+    // =========================
+    // INIT / EVENTS
+    // =========================
+    window.addEventListener('DOMContentLoaded', ()=>{
+      const tapBtn = document.getElementById('tapButton');
+      tapBtn.addEventListener('click', tap);
+      tapBtn.addEventListener('touchstart', e=>{ e.preventDefault(); tap(); });
+
+      document.getElementById('shopBtn').addEventListener('click', ()=>openModal('shop'));
+      document.getElementById('achievementsBtn').addEventListener('click', ()=>openModal('achievements'));
+      document.getElementById('boostsBtn').addEventListener('click', ()=>openModal('boosts'));
+      document.getElementById('statsBtn').addEventListener('click', ()=>openModal('stats'));
+
+      document.getElementById('closeShop').addEventListener('click', ()=>closeModal('shop'));
+      document.getElementById('closeAchievements').addEventListener('click', ()=>closeModal('achievements'));
+      document.getElementById('closeBoosts').addEventListener('click', ()=>closeModal('boosts'));
+      document.getElementById('closeStats').addEventListener('click', ()=>closeModal('stats'));
+
+      document.getElementById('dailyRewardBtn').addEventListener('click', claimDailyReward);
+
+      // First paint from saved state
+      updateDisplay();
+      renderShop();
+      renderBoosts();
+      renderAchievements();
+      startAutoTapper();
+      checkDailyReward();
+    });
+
+    // =========================
+    // CORE GAME LOGIC
+    // =========================
+    function tap(){
+      let basePoints = 1 + gameState.upgrades.tapPower;
+
+      // Golden Touch bonus
+      if (gameState.upgrades.goldenTouch > 0) basePoints += gameState.upgrades.goldenTouch * 5;
+
+      // Lucky Tap chance
+      let isLucky = false;
+      if (gameState.upgrades.luckyTap > 0) {
+        const luckChance = gameState.upgrades.luckyTap * 0.1;
+        if (Math.random() < luckChance) { basePoints *= 10; isLucky = true; gameState.consecutiveLuckyTaps++; }
+        else { gameState.consecutiveLuckyTaps = 0; }
+      }
+
+      let totalMultiplier = gameState.multiplier;
+      if (gameState.upgrades.multiplierBoost > 0) totalMultiplier += gameState.upgrades.multiplierBoost * 0.5;
+
+      const points = Math.floor(basePoints * totalMultiplier);
+
+      gameState.score += points;
+      gameState.totalTaps++;
+      gameState.totalEarned += points;
+
+      if (isLucky) { createParticle(points, '#FFD700'); showNotification('LUCKY TAP! 10X POINTS!'); }
+      else { createParticle(points, '#00ff41'); }
+
+      updateDisplay();
+      checkMilestones();
+      checkAchievements(); // only unlocks to "unclaimed"
+      persist();
+    }
+
+    // =========================
+    // ACHIEVEMENTS: unlock → claim
+    // =========================
+    function checkAchievements(){
+      const maybeUnlock = (id) => {
+        const s = gameState.achievementsStatus[id] || "locked";
+        if (s === "locked") {
+          gameState.achievementsStatus[id] = "unclaimed";
+          showNotification(`Achievement unlocked: ${getAchievementName(id)} — tap 🏆 to claim`);
+          renderAchievements();
+          persist();
+        }
+      };
+
+      if (gameState.totalTaps >= 1)        maybeUnlock('firstTap');
+      if (gameState.score >= 100)          maybeUnlock('reach100');
+      if (gameState.score >= 1000)         maybeUnlock('reach1000');
+      if (gameState.score >= 10000)        maybeUnlock('reach10000');
+      if (gameState.score >= 100000)       maybeUnlock('reach100000');
+      if (gameState.totalTaps >= 100)      maybeUnlock('tap100Times');
+      if (gameState.totalTaps >= 1000)     maybeUnlock('tap1000Times');
+
+      const hasUpgrade   = Object.values(gameState.upgrades).some(lvl => lvl > 0);
+      if (hasUpgrade)                         maybeUnlock('buyFirstUpgrade');
+
+      const hasMaxUpgrade= Object.values(gameState.upgrades).some(lvl => lvl >= 10);
+      if (hasMaxUpgrade)                      maybeUnlock('maxUpgrade');
+
+      if (gameState.consecutiveLuckyTaps >= 3) maybeUnlock('luckyStreak');
+
+      if (gameState.score > gameState.maxScore) gameState.maxScore = gameState.score;
+    }
+
+    function getAchievementName(id){
+      const a = achievements.find(x => x.id === id);
+      return a ? a.name : id;
+    }
+
+    function claimAchievement(id){
+      const status = gameState.achievementsStatus[id] || "locked";
+      if (status !== "unclaimed") return;
+
+      const a = achievements.find(x => x.id === id);
+      if (!a) return;
+
+      gameState.achievementsStatus[id] = "claimed";
+      gameState.score += a.reward;
+
+      const popup = document.createElement('div');
+      popup.className = 'achievement-popup';
+      popup.innerHTML =
+        `<div style="font-size:48px; margin-bottom:10px;">${a.icon}</div>
+         <div style="font-size:28px; margin-bottom:10px;">REWARD CLAIMED!</div>
+         <div style="font-size:24px; margin-bottom:10px;">${a.name}</div>
+         <div style="font-size:18px; opacity:.8; margin-bottom:10px;">${a.description}</div>
+         <div style="font-size:20px; color:green;">+${a.reward} points!</div>`;
+      document.body.appendChild(popup);
+      setTimeout(()=>popup.remove(),3000);
+
+      updateDisplay();
+      renderAchievements();
+      persist(false);
+    }
+
+    // =========================
+    // MILESTONES
+    // =========================
+    function checkMilestones(){
+      if (gameState.score >= 500 && gameState.multiplier < 5) {
+        gameState.multiplier = 5; showNotification('X5 MULTIPLIER UNLOCKED!'); persist();
+      } else if (gameState.score >= 200 && gameState.multiplier < 3) {
+        gameState.multiplier = 3; showNotification('X3 MULTIPLIER UNLOCKED!'); persist();
+      } else if (gameState.score >= 50 && gameState.multiplier < 2) {
+        gameState.multiplier = 2; showNotification('X2 MULTIPLIER UNLOCKED!'); persist();
+      }
+    }
+
+    // =========================
+    // DAILY REWARD
+    // =========================
+    function checkDailyReward(){
+      const now = Date.now();
+      const oneDayMs = 24*60*60*1000;
+      const timeSince = now - gameState.lastDailyReward;
+
+      const btn = document.getElementById('dailyRewardBtn');
+      if (timeSince >= oneDayMs || gameState.lastDailyReward === 0) btn.style.display = 'block';
+      else btn.style.display = 'none';
+
+      // Reset streak if > 48h since last claim
+      if (timeSince > oneDayMs*2 && gameState.lastDailyReward !== 0) {
+        gameState.dailyStreak = 0; persist();
+      }
+    }
+
+    function claimDailyReward(){
+      const now = Date.now();
+      const oneDayMs = 24*60*60*1000;
+      if (now - gameState.lastDailyReward >= oneDayMs || gameState.lastDailyReward === 0) {
+        gameState.dailyStreak++;
+        gameState.lastDailyReward = now;
+
+        const baseReward = 100;
+        const streakBonus = gameState.dailyStreak * 50;
+        const totalReward = baseReward + streakBonus;
+        gameState.score += totalReward;
+
+        const popup = document.createElement('div');
+        popup.className = 'achievement-popup';
+        popup.innerHTML =
+          `<div style="font-size:48px; margin-bottom:10px;">🎁</div>
+           <div style="font-size:28px; margin-bottom:10px;">DAILY REWARD!</div>
+           <div style="font-size:20px; margin-bottom:10px;">Day ${gameState.dailyStreak} Streak!</div>
+           <div style="font-size:24px; color:green;">+${totalReward} points!</div>`;
+        document.body.appendChild(popup);
+        setTimeout(()=>popup.remove(),3000);
+
+        document.getElementById('dailyRewardBtn').style.display = 'none';
+        updateDisplay();
+        persist(false);
+      }
+    }
+
+    // =========================
+    // UI HELPERS
+    // =========================
+    function createParticle(points,color){
+      const particle = document.createElement('div');
+      particle.className='particle';
+      particle.textContent = '+' + points;
+      particle.style.left='50%'; particle.style.top='50%'; particle.style.color=color||'#00ff41';
+      document.body.appendChild(particle);
+      setTimeout(()=>particle.remove(),1000);
+    }
+
+    function showNotification(message){
+      const n = document.createElement('div');
+      n.style.cssText='position:fixed; top:20%; left:50%; transform:translateX(-50%); background:linear-gradient(135deg,#667eea,#764ba2); padding:20px 40px; border-radius:20px; font-size:24px; font-weight:bold; z-index:2000; animation:slideIn .5s;';
+      n.textContent = message;
+      document.body.appendChild(n);
+      setTimeout(()=>n.remove(),2000);
+    }
+
+    function updateDisplay(){
+      document.getElementById('score').textContent = Math.floor(gameState.score).toLocaleString();
+      let displayMultiplier = gameState.multiplier;
+      if (gameState.upgrades.multiplierBoost > 0) displayMultiplier += gameState.upgrades.multiplierBoost * 0.5;
+      document.getElementById('multiplierValue').textContent = displayMultiplier.toFixed(1);
+    }
+
+    // =========================
+    // MODALS
+    // =========================
+    function openModal(type){
+      document.getElementById(type+'Modal').classList.add('active');
+      if(type==='stats') updateStats();
+      if(type==='shop') renderShop();
+      if(type==='achievements') renderAchievements();
+    }
+    function closeModal(type){ document.getElementById(type+'Modal').classList.remove('active'); }
+
+    // =========================
+    // SHOP
+    // =========================
+    function renderShop(){
+      const container = document.getElementById('shopItems');
+      let html='';
+      shopItems.forEach(item=>{
+        const level = gameState.upgrades[item.id] || 0;
+        const cost = Math.floor(item.baseCost * Math.pow(1.5, level));
+        const canAfford = gameState.score >= cost;
+        html += `
+          <div class="shop-item">
+            <div class="shop-item-info">
+              <h3>${item.icon} ${item.name} (Lvl ${level})</h3>
+              <p>${item.description}</p>
+              <p style="color:${canAfford ? '#00ff41' : '#ff4444'}">Cost: ${cost.toLocaleString()} points</p>
             </div>
-            <div id="shopItems"></div>
-        </div>
-    </div>
+            <button class="buy-btn" id="buy-${item.id}" ${!canAfford ? 'disabled' : ''}>BUY</button>
+          </div>`;
+      });
+      container.innerHTML = html;
 
-    <!-- Achievements Modal -->
-    <div class="modal" id="achievementsModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title">ACHIEVEMENTS</h2>
-                <button class="close-btn" id="closeAchievements">&times;</button>
+      shopItems.forEach(item=>{
+        const btn = document.getElementById('buy-'+item.id);
+        if(btn){ btn.addEventListener('click', ()=>buyUpgrade(item.id)); }
+      });
+    }
+
+    function buyUpgrade(id){
+      const item = shopItems.find(i=>i.id===id);
+      const level = gameState.upgrades[id] || 0;
+      const cost = Math.floor(item.baseCost * Math.pow(1.5, level));
+      if (gameState.score >= cost) {
+        gameState.score -= cost;
+        gameState.upgrades[id]++;
+        updateDisplay();
+        renderShop();
+        showNotification(`${item.name} upgraded to Lvl ${gameState.upgrades[id]}!`);
+        checkAchievements(); // may unlock "buyFirstUpgrade" or "maxUpgrade"
+        persist(false);
+      }
+    }
+
+    // =========================
+    // ACHIEVEMENTS MODAL (with CLAIM buttons)
+    // =========================
+    function renderAchievements(){
+      const container = document.getElementById('achievementsList');
+      let html=''; 
+      let unlocked=0, claimed=0;
+
+      achievements.forEach(a=>{
+        const status = gameState.achievementsStatus[a.id] || "locked";
+        const isUnlocked = status !== "locked";
+        const isClaimed  = status === "claimed";
+        if (isUnlocked) unlocked++;
+        if (isClaimed) claimed++;
+
+        html += `
+          <div class="achievement-item ${isUnlocked ? 'unlocked' : ''}">
+            <div class="achievement-icon">${a.icon}</div>
+            <div class="achievement-info" style="flex:1;">
+              <h3>${a.name}${isClaimed ? ' ✓' : ''}</h3>
+              <p>${a.description}</p>
+              <p style="color:#FFD700;">Reward: ${a.reward} points</p>
             </div>
-            <div id="achievementsList"></div>
-        </div>
-    </div>
-
-    <!-- Boosts Modal -->
-    <div class="modal" id="boostsModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title">BOOSTS</h2>
-                <button class="close-btn" id="closeBoosts">&times;</button>
+            <div>
+              ${status === "unclaimed" 
+                ? `<button class="buy-btn" data-claim="${a.id}">CLAIM</button>`
+                : `<span style="opacity:.7;">${status === "claimed" ? 'Claimed' : 'Locked'}</span>`
+              }
             </div>
-            <div id="boostItems"></div>
+          </div>`;
+      });
+
+      container.innerHTML = `
+        <div style="text-align:center; margin-bottom:20px; font-size:20px;">
+          Unlocked: ${unlocked}/${achievements.length} &nbsp;|&nbsp; Claimed: ${claimed}/${achievements.length}
+        </div>` + html;
+
+      // wire claim buttons
+      container.querySelectorAll('[data-claim]').forEach(btn=>{
+        btn.addEventListener('click', ()=> claimAchievement(btn.getAttribute('data-claim')));
+      });
+    }
+
+    // =========================
+    // BOOSTS (placeholder actions)
+    // =========================
+    function renderBoosts(){
+      const c = document.getElementById('boostItems');
+      c.innerHTML = `
+        <div class="shop-item">
+          <div class="shop-item-info">
+            <h3>⚡ 2X Boost (30s)</h3>
+            <p>Double your earnings for 30 seconds</p>
+            <p style="color:#00ff41;">Cost: 100 points</p>
+          </div>
+          <button class="buy-btn" id="boost-double">ACTIVATE</button>
         </div>
-    </div>
+        <div class="shop-item">
+          <div class="shop-item-info">
+            <h3>💥 Mega Boost (60s)</h3>
+            <p>10X multiplier for 60 seconds</p>
+            <p style="color:#00ff41;">Cost: 500 points</p>
+          </div>
+          <button class="buy-btn" id="boost-mega">ACTIVATE</button>
+        </div>`;
 
-    <!-- Stats Modal -->
-    <div class="modal" id="statsModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title">STATS</h2>
-                <button class="close-btn" id="closeStats">&times;</button>
-            </div>
-            <div id="statsContent"></div>
-        </div>
-    </div>
+      const doubleBtn = document.getElementById('boost-double');
+      if(doubleBtn){ doubleBtn.addEventListener('click', ()=>{
+        if(gameState.score>=100){ gameState.score-=100; showNotification('2X Boost Activated!'); updateDisplay(); persist(false); }
+      });}
+      const megaBtn = document.getElementById('boost-mega');
+      if(megaBtn){ megaBtn.addEventListener('click', ()=>{
+        if(gameState.score>=500){ gameState.score-=500; showNotification('Mega Boost Activated!'); updateDisplay(); persist(false); }
+      });}
+    }
 
-    <script>
-        // =========================
-        // PERSISTENCE (localStorage)
-        // =========================
-        const STORE_KEY = "glitchedmint-bot2:v1";
-        const defaultState = {
-            score: 0, multiplier: 1, totalTaps: 0, totalEarned: 0,
-            startTime: Date.now(),
-            upgrades: { tapPower:0, autoTapper:0, multiplierBoost:0, luckyTap:0, goldenTouch:0 },
-            achievements: {
-                firstTap:false, reach100:false, reach1000:false, reach10000:false, reach100000:false,
-                tap100Times:false, tap1000Times:false, buyFirstUpgrade:false, maxUpgrade:false, luckyStreak:false
-            },
-            consecutiveLuckyTaps:0, maxScore:0, lastDailyReward:0, dailyStreak:0
-        };
+    // =========================
+    // STATS
+    // =========================
+    function updateStats(){
+      const playTime = Math.floor((Date.now() - gameState.startTime) / 1000);
+      const minutes = Math.floor(playTime / 60);
+      const seconds = playTime % 60;
+      const unlocked = Object.values(gameState.achievementsStatus).filter(v => v !== "locked").length;
+      const claimed  = Object.values(gameState.achievementsStatus).filter(v => v === "claimed").length;
 
-        function loadState(){
-            try{
-                const raw = localStorage.getItem(STORE_KEY);
-                if(!raw) return { ...defaultState };
-                const parsed = JSON.parse(raw);
+      const c = document.getElementById('statsContent');
+      c.innerHTML = `
+        <div class="stat-item"><span class="stat-label">Total Taps</span><span class="stat-value">${gameState.totalTaps.toLocaleString()}</span></div>
+        <div class="stat-item"><span class="stat-label">Total Earned</span><span class="stat-value">${gameState.totalEarned.toLocaleString()}</span></div>
+        <div class="stat-item"><span class="stat-label">Current Score</span><span class="stat-value">${Math.floor(gameState.score).toLocaleString()}</span></div>
+        <div class="stat-item"><span class="stat-label">Highest Score</span><span class="stat-value">${Math.floor(gameState.maxScore).toLocaleString()}</span></div>
+        <div class="stat-item"><span class="stat-label">Play Time</span><span class="stat-value">${minutes}m ${seconds}s</span></div>
+        <div class="stat-item"><span class="stat-label">Taps Per Second</span><span class="stat-value">${(playTime>0 ? (gameState.totalTaps/playTime).toFixed(2) : '0')}</span></div>
+        <div class="stat-item"><span class="stat-label">Points Per Tap</span><span class="stat-value">${(gameState.totalTaps>0 ? Math.floor(gameState.totalEarned/gameState.totalTaps) : '0')}</span></div>
+        <div class="stat-item"><span class="stat-label">Achievements</span><span class="stat-value">${claimed}/${achievements.length} claimed (${unlocked} unlocked)</span></div>
+        <div class="stat-item"><span class="stat-label">Daily Streak</span><span class="stat-value">${gameState.dailyStreak} days</span></div>`;
+    }
 
-                // Deep-merge into defaults to keep forward-compat
-                const merged = JSON.parse(JSON.stringify(defaultState));
-                Object.assign(merged, parsed);
-                if(parsed.upgrades) Object.assign(merged.upgrades, parsed.upgrades);
-                if(parsed.achievements) Object.assign(merged.achievements, parsed.achievements);
-                return merged;
-            }catch{ return { ...defaultState }; }
+    // =========================
+    // AUTO TAPPER
+    // =========================
+    function startAutoTapper(){
+      setInterval(()=>{
+        if(gameState.upgrades.autoTapper > 0){
+          let autoPoints = gameState.upgrades.autoTapper;
+          let totalMultiplier = gameState.multiplier;
+          if (gameState.upgrades.multiplierBoost > 0) totalMultiplier += gameState.upgrades.multiplierBoost * 0.5;
+
+          const points = Math.floor(autoPoints * totalMultiplier);
+          gameState.score += points;
+          gameState.totalEarned += points;
+
+          updateDisplay();
+          checkMilestones();
+          checkAchievements();
+          persist();
         }
-        function saveState(state){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch{} }
-
-        // Throttled saver to avoid spamming storage
-        let saveTimer=null;
-        function persist(throttle=true){
-            if(!throttle){ saveState(gameState); return; }
-            if(saveTimer) return;
-            saveTimer = setTimeout(()=>{ saveTimer=null; saveState(gameState); }, 400);
-        }
-
-        // Single in-memory copy
-        let gameState = loadState();
-
-        // =========================
-        // SHOP / ACHIEVEMENTS DATA
-        // =========================
-        const shopItems = [
-            { id:'tapPower', name:'Tap Power', description:'Increase points per tap', baseCost:50, effect:1, icon:'👆' },
-            { id:'multiplierBoost', name:'Multiplier Boost', description:'Increase base multiplier', baseCost:200, effect:0.5, icon:'✨' },
-            { id:'autoTapper', name:'Auto Tapper', description:'Auto tap every second', baseCost:500, effect:1, icon:'🤖' },
-            { id:'luckyTap', name:'Lucky Tap', description:'10% chance for 10x points', baseCost:1000, effect:0.1, icon:'🍀' },
-            { id:'goldenTouch', name:'Golden Touch', description:'All taps worth more', baseCost:5000, effect:5, icon:'👑' }
-        ];
-
-        const achievements = [
-            { id:'firstTap', name:'First Steps', description:'Make your first tap', reward:10, icon:'👶' },
-            { id:'reach100', name:'Century', description:'Reach 100 points', reward:50, icon:'💯' },
-            { id:'reach1000', name:'Thousand Club', description:'Reach 1,000 points', reward:200, icon:'🎯' },
-            { id:'reach10000', name:'Big Leagues', description:'Reach 10,000 points', reward:1000, icon:'🏆' },
-            { id:'reach100000', name:'Millionaire', description:'Reach 100,000 points', reward:10000, icon:'💰' },
-            { id:'tap100Times', name:'Persistent', description:'Tap 100 times', reward:100, icon:'🔨' },
-            { id:'tap1000Times', name:'Tap Master', description:'Tap 1,000 times', reward:500, icon:'⚡' },
-            { id:'buyFirstUpgrade', name:'Investor', description:'Buy your first upgrade', reward:25, icon:'📈' },
-            { id:'maxUpgrade', name:'Max Power', description:'Get any upgrade to level 10', reward:2000, icon:'💪' },
-            { id:'luckyStreak', name:'Lucky Devil', description:'Get 3 lucky taps in a row', reward:777, icon:'🍀' }
-        ];
-
-        // =========================
-        // INIT / EVENT WIRING
-        // =========================
-        window.addEventListener('DOMContentLoaded', ()=>{
-            // Buttons
-            const tapBtn = document.getElementById('tapButton');
-            tapBtn.addEventListener('click', tap);
-            tapBtn.addEventListener('touchstart', e=>{ e.preventDefault(); tap(); });
-
-            document.getElementById('shopBtn').addEventListener('click', ()=>openModal('shop'));
-            document.getElementById('achievementsBtn').addEventListener('click', ()=>openModal('achievements'));
-            document.getElementById('boostsBtn').addEventListener('click', ()=>openModal('boosts'));
-            document.getElementById('statsBtn').addEventListener('click', ()=>openModal('stats'));
-
-            document.getElementById('closeShop').addEventListener('click', ()=>closeModal('shop'));
-            document.getElementById('closeAchievements').addEventListener('click', ()=>closeModal('achievements'));
-            document.getElementById('closeBoosts').addEventListener('click', ()=>closeModal('boosts'));
-            document.getElementById('closeStats').addEventListener('click', ()=>closeModal('stats'));
-
-            document.getElementById('dailyRewardBtn').addEventListener('click', claimDailyReward);
-
-            // Hydrate UI from saved state
-            updateDisplay();
-            renderShop();
-            renderBoosts();
-            renderAchievements();
-            startAutoTapper();
-            checkDailyReward();
-        });
-
-        // =========================
-        // CORE GAME LOGIC
-        // =========================
-        function tap(){
-            let basePoints = 1 + gameState.upgrades.tapPower;
-
-            // Golden Touch bonus
-            if (gameState.upgrades.goldenTouch > 0) {
-                basePoints += gameState.upgrades.goldenTouch * 5;
-            }
-
-            // Lucky Tap chance
-            let isLucky = false;
-            if (gameState.upgrades.luckyTap > 0) {
-                const luckChance = gameState.upgrades.luckyTap * 0.1;
-                if (Math.random() < luckChance) {
-                    basePoints *= 10; isLucky = true; gameState.consecutiveLuckyTaps++;
-                } else {
-                    gameState.consecutiveLuckyTaps = 0;
-                }
-            }
-
-            let totalMultiplier = gameState.multiplier;
-            if (gameState.upgrades.multiplierBoost > 0) totalMultiplier += gameState.upgrades.multiplierBoost * 0.5;
-
-            const points = Math.floor(basePoints * totalMultiplier);
-
-            gameState.score += points;
-            gameState.totalTaps++;
-            gameState.totalEarned += points;
-
-            if (isLucky) { createParticle(points, '#FFD700'); showNotification('LUCKY TAP! 10X POINTS!'); }
-            else { createParticle(points, '#00ff41'); }
-
-            updateDisplay();
-            checkMilestones();
-            checkAchievements();
-            persist();
-        }
-
-        function checkAchievements(){
-            if (!gameState.achievements.firstTap && gameState.totalTaps >= 1) unlockAchievement('firstTap');
-            if (!gameState.achievements.reach100 && gameState.score >= 100) unlockAchievement('reach100');
-            if (!gameState.achievements.reach1000 && gameState.score >= 1000) unlockAchievement('reach1000');
-            if (!gameState.achievements.reach10000 && gameState.score >= 10000) unlockAchievement('reach10000');
-            if (!gameState.achievements.reach100000 && gameState.score >= 100000) unlockAchievement('reach100000');
-            if (!gameState.achievements.tap100Times && gameState.totalTaps >= 100) unlockAchievement('tap100Times');
-            if (!gameState.achievements.tap1000Times && gameState.totalTaps >= 1000) unlockAchievement('tap1000Times');
-
-            const hasUpgrade = Object.values(gameState.upgrades).some(lvl => lvl > 0);
-            if (!gameState.achievements.buyFirstUpgrade && hasUpgrade) unlockAchievement('buyFirstUpgrade');
-
-            const hasMaxUpgrade = Object.values(gameState.upgrades).some(lvl => lvl >= 10);
-            if (!gameState.achievements.maxUpgrade && hasMaxUpgrade) unlockAchievement('maxUpgrade');
-
-            if (!gameState.achievements.luckyStreak && gameState.consecutiveLuckyTaps >= 3) unlockAchievement('luckyStreak');
-
-            if (gameState.score > gameState.maxScore) gameState.maxScore = gameState.score;
-        }
-
-        function unlockAchievement(id){
-            const achievement = achievements.find(a => a.id === id);
-            if (achievement && !gameState.achievements[id]) {
-                gameState.achievements[id] = true;
-                gameState.score += achievement.reward;
-
-                const popup = document.createElement('div');
-                popup.className = 'achievement-popup';
-                popup.innerHTML =
-                    `<div style="font-size:48px; margin-bottom:10px;">${achievement.icon}</div>
-                     <div style="font-size:28px; margin-bottom:10px;">ACHIEVEMENT!</div>
-                     <div style="font-size:24px; margin-bottom:10px;">${achievement.name}</div>
-                     <div style="font-size:18px; opacity:.8; margin-bottom:10px;">${achievement.description}</div>
-                     <div style="font-size:20px; color:green;">+${achievement.reward} points!</div>`;
-                document.body.appendChild(popup);
-                setTimeout(()=>popup.remove(),3000);
-
-                updateDisplay();
-                renderAchievements();
-                persist();
-            }
-        }
-
-        function checkMilestones(){
-            if (gameState.score >= 500 && gameState.multiplier < 5) {
-                gameState.multiplier = 5; showNotification('X5 MULTIPLIER UNLOCKED!'); persist();
-            } else if (gameState.score >= 200 && gameState.multiplier < 3) {
-                gameState.multiplier = 3; showNotification('X3 MULTIPLIER UNLOCKED!'); persist();
-            } else if (gameState.score >= 50 && gameState.multiplier < 2) {
-                gameState.multiplier = 2; showNotification('X2 MULTIPLIER UNLOCKED!'); persist();
-            }
-        }
-
-        // =========================
-        // DAILY REWARD
-        // =========================
-        function checkDailyReward(){
-            const now = Date.now();
-            const oneDayMs = 24*60*60*1000;
-            const timeSince = now - gameState.lastDailyReward;
-
-            const btn = document.getElementById('dailyRewardBtn');
-            if (timeSince >= oneDayMs || gameState.lastDailyReward === 0) btn.style.display = 'block';
-            else btn.style.display = 'none';
-
-            // Reset streak if > 48h since last claim
-            if (timeSince > oneDayMs*2 && gameState.lastDailyReward !== 0) {
-                gameState.dailyStreak = 0; persist();
-            }
-        }
-
-        function claimDailyReward(){
-            const now = Date.now();
-            const oneDayMs = 24*60*60*1000;
-            if (now - gameState.lastDailyReward >= oneDayMs || gameState.lastDailyReward === 0) {
-                gameState.dailyStreak++;
-                gameState.lastDailyReward = now;
-
-                const baseReward = 100;
-                const streakBonus = gameState.dailyStreak * 50;
-                const totalReward = baseReward + streakBonus;
-                gameState.score += totalReward;
-
-                const popup = document.createElement('div');
-                popup.className = 'achievement-popup';
-                popup.innerHTML =
-                    `<div style="font-size:48px; margin-bottom:10px;">🎁</div>
-                     <div style="font-size:28px; margin-bottom:10px;">DAILY REWARD!</div>
-                     <div style="font-size:20px; margin-bottom:10px;">Day ${gameState.dailyStreak} Streak!</div>
-                     <div style="font-size:24px; color:green;">+${totalReward} points!</div>`;
-                document.body.appendChild(popup);
-                setTimeout(()=>popup.remove(),3000);
-
-                document.getElementById('dailyRewardBtn').style.display = 'none';
-                updateDisplay();
-                persist(false); // save immediately
-            }
-        }
-
-        // =========================
-        // UI HELPERS
-        // =========================
-        function createParticle(points,color){
-            const particle = document.createElement('div');
-            particle.className='particle';
-            particle.textContent = '+' + points;
-            particle.style.left='50%'; particle.style.top='50%'; particle.style.color=color||'#00ff41';
-            document.body.appendChild(particle);
-            setTimeout(()=>particle.remove(),1000);
-        }
-
-        function showNotification(message){
-            const n = document.createElement('div');
-            n.style.cssText='position:fixed; top:20%; left:50%; transform:translateX(-50%); background:linear-gradient(135deg,#667eea,#764ba2); padding:20px 40px; border-radius:20px; font-size:24px; font-weight:bold; z-index:2000; animation:slideIn .5s;';
-            n.textContent = message;
-            document.body.appendChild(n);
-            setTimeout(()=>n.remove(),2000);
-        }
-
-        function updateDisplay(){
-            document.getElementById('score').textContent = Math.floor(gameState.score).toLocaleString();
-            let displayMultiplier = gameState.multiplier;
-            if (gameState.upgrades.multiplierBoost > 0) displayMultiplier += gameState.upgrades.multiplierBoost * 0.5;
-            document.getElementById('multiplierValue').textContent = displayMultiplier.toFixed(1);
-        }
-
-        // =========================
-        // MODALS
-        // =========================
-        function openModal(type){
-            document.getElementById(type+'Modal').classList.add('active');
-            if(type==='stats') updateStats();
-            if(type==='shop') renderShop();
-            if(type==='achievements') renderAchievements();
-        }
-        function closeModal(type){ document.getElementById(type+'Modal').classList.remove('active'); }
-
-        // =========================
-        // SHOP
-        // =========================
-        function renderShop(){
-            const container = document.getElementById('shopItems');
-            let html='';
-            shopItems.forEach(item=>{
-                const level = gameState.upgrades[item.id] || 0;
-                const cost = Math.floor(item.baseCost * Math.pow(1.5, level));
-                const canAfford = gameState.score >= cost;
-                html += `
-                <div class="shop-item">
-                  <div class="shop-item-info">
-                    <h3>${item.icon} ${item.name} (Lvl ${level})</h3>
-                    <p>${item.description}</p>
-                    <p style="color:${canAfford ? '#00ff41' : '#ff4444'}">Cost: ${cost.toLocaleString()} points</p>
-                  </div>
-                  <button class="buy-btn" id="buy-${item.id}" ${!canAfford ? 'disabled' : ''}>BUY</button>
-                </div>`;
-            });
-            container.innerHTML = html;
-
-            shopItems.forEach(item=>{
-                const btn = document.getElementById('buy-'+item.id);
-                if(btn){ btn.addEventListener('click', ()=>buyUpgrade(item.id)); }
-            });
-        }
-
-        function buyUpgrade(id){
-            const item = shopItems.find(i=>i.id===id);
-            const level = gameState.upgrades[id] || 0;
-            const cost = Math.floor(item.baseCost * Math.pow(1.5, level));
-            if (gameState.score >= cost) {
-                gameState.score -= cost;
-                gameState.upgrades[id]++;
-                updateDisplay();
-                renderShop();
-                showNotification(`${item.name} upgraded to Lvl ${gameState.upgrades[id]}!`);
-                checkAchievements();
-                persist(false); // immediate save on purchase
-            }
-        }
-
-        // =========================
-        // ACHIEVEMENTS LIST
-        // =========================
-        function renderAchievements(){
-            const container = document.getElementById('achievementsList');
-            let html=''; let unlockedCount=0;
-            achievements.forEach(a=>{
-                const unlocked = gameState.achievements[a.id];
-                if(unlocked) unlockedCount++;
-                html += `
-                <div class="achievement-item ${unlocked ? 'unlocked':''}">
-                  <div class="achievement-icon">${a.icon}</div>
-                  <div class="achievement-info">
-                    <h3>${a.name}${unlocked ? ' ✓' : ''}</h3>
-                    <p>${a.description}</p>
-                    <p style="color:#FFD700;">Reward: ${a.reward} points</p>
-                  </div>
-                </div>`;
-            });
-            container.innerHTML = `<div style="text-align:center; margin-bottom:20px; font-size:20px;">Unlocked: ${unlockedCount}/${achievements.length}</div>` + html;
-        }
-
-        // =========================
-        // BOOSTS (placeholder actions)
-        // =========================
-        function renderBoosts(){
-            const c = document.getElementById('boostItems');
-            c.innerHTML = `
-              <div class="shop-item">
-                <div class="shop-item-info">
-                  <h3>⚡ 2X Boost (30s)</h3>
-                  <p>Double your earnings for 30 seconds</p>
-                  <p style="color:#00ff41;">Cost: 100 points</p>
-                </div>
-                <button class="buy-btn" id="boost-double">ACTIVATE</button>
-              </div>
-              <div class="shop-item">
-                <div class="shop-item-info">
-                  <h3>💥 Mega Boost (60s)</h3>
-                  <p>10X multiplier for 60 seconds</p>
-                  <p style="color:#00ff41;">Cost: 500 points</p>
-                </div>
-                <button class="buy-btn" id="boost-mega">ACTIVATE</button>
-              </div>`;
-            const doubleBtn = document.getElementById('boost-double');
-            if(doubleBtn){ doubleBtn.addEventListener('click', ()=>{
-                if(gameState.score>=100){ gameState.score-=100; showNotification('2X Boost Activated!'); updateDisplay(); persist(false); }
-            });}
-            const megaBtn = document.getElementById('boost-mega');
-            if(megaBtn){ megaBtn.addEventListener('click', ()=>{
-                if(gameState.score>=500){ gameState.score-=500; showNotification('Mega Boost Activated!'); updateDisplay(); persist(false); }
-            });}
-        }
-
-        // =========================
-        // STATS
-        // =========================
-        function updateStats(){
-            const playTime = Math.floor((Date.now() - gameState.startTime) / 1000);
-            const minutes = Math.floor(playTime / 60);
-            const seconds = playTime % 60;
-            const unlocked = Object.values(gameState.achievements).filter(Boolean).length;
-
-            const c = document.getElementById('statsContent');
-            c.innerHTML = `
-              <div class="stat-item"><span class="stat-label">Total Taps</span><span class="stat-value">${gameState.totalTaps.toLocaleString()}</span></div>
-              <div class="stat-item"><span class="stat-label">Total Earned</span><span class="stat-value">${gameState.totalEarned.toLocaleString()}</span></div>
-              <div class="stat-item"><span class="stat-label">Current Score</span><span class="stat-value">${Math.floor(gameState.score).toLocaleString()}</span></div>
-              <div class="stat-item"><span class="stat-label">Highest Score</span><span class="stat-value">${Math.floor(gameState.maxScore).toLocaleString()}</span></div>
-              <div class="stat-item"><span class="stat-label">Play Time</span><span class="stat-value">${minutes}m ${seconds}s</span></div>
-              <div class="stat-item"><span class="stat-label">Taps Per Second</span><span class="stat-value">${(playTime>0 ? (gameState.totalTaps/playTime).toFixed(2) : '0')}</span></div>
-              <div class="stat-item"><span class="stat-label">Points Per Tap</span><span class="stat-value">${(gameState.totalTaps>0 ? Math.floor(gameState.totalEarned/gameState.totalTaps) : '0')}</span></div>
-              <div class="stat-item"><span class="stat-label">Achievements</span><span class="stat-value">${unlocked}/${achievements.length}</span></div>
-              <div class="stat-item"><span class="stat-label">Daily Streak</span><span class="stat-value">${gameState.dailyStreak} days</span></div>`;
-        }
-
-        // =========================
-        // AUTO TAPPER
-        // =========================
-        function startAutoTapper(){
-            setInterval(()=>{
-                if(gameState.upgrades.autoTapper > 0){
-                    let autoPoints = gameState.upgrades.autoTapper;
-                    let totalMultiplier = gameState.multiplier;
-                    if (gameState.upgrades.multiplierBoost > 0) totalMultiplier += gameState.upgrades.multiplierBoost * 0.5;
-
-                    const points = Math.floor(autoPoints * totalMultiplier);
-                    gameState.score += points;
-                    gameState.totalEarned += points;
-
-                    updateDisplay();
-                    checkMilestones();
-                    checkAchievements();
-                    persist();
-                }
-            }, 1000);
-        }
-    </script>
+      }, 1000);
+    }
+  </script>
 </body>
 </html>
